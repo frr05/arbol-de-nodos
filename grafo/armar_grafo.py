@@ -225,6 +225,71 @@ class Grafo:
         for nid, n in self.nodos.items():
             n["capitulo"] = cap.get(nid)
 
+    def datar(self):
+        """Acto de origen (`origen`) y de eliminación (`hasta`) de cada nodo, como índice en el orden de aplicación de
+        los actos, y acto desde el que existe cada arista (`desde`). Sirve para ver el grafo «hasta el acto k»."""
+        orden = {a["id"]: k for k, a in enumerate(self.arbol["actos"])}
+        por_id = {n["id"]: n for n in self.arbol["nodos"]}
+        hijos = defaultdict(list)
+        for s_, t, k, _ in self.aristas:
+            if k == "jerarquia":
+                hijos[s_].append(t)
+        acto_id = lambda x: x.get("id") if isinstance(x, dict) else None
+        propio, fin = {}, {}
+        for nid, n in self.nodos.items():
+            t = n["tipo"]
+            if t in ("acto", "fragmento"):
+                propio[nid] = orden.get(n["acto"])
+            elif t == "documento":
+                propio[nid] = min(orden[a["id"]] for a in self.arbol["actos"] if a["documento"]["id"] == nid)
+            elif nid in por_id:
+                a = por_id[nid]
+                vs = a.get("versiones") or []
+                k = orden.get(acto_id(a.get("agregado_por"))) if a.get("agregado_por") else None
+                if k is None and vs:
+                    k = orden.get(acto_id(vs[0].get("acto")))
+                if k is None and (t in ("articulo", "capitulo", "parte", "portada") or nid == "BASES"):
+                    k = 0                          # estructura de las Bases: existe desde ellas aunque sus incisos cambien
+                if k is not None:
+                    propio[nid] = k
+                # la versión eliminada lleva el acto de su texto; el que la elimina está en `reemplazado_por`
+                el = [orden.get(v.get("reemplazado_por")) for v in vs if v.get("relacion") == "eliminado"]
+                if a.get("eliminado_por"):
+                    el.append(orden.get(acto_id(a["eliminado_por"])))
+                el = [x for x in el if x is not None]
+                if el:
+                    fin[nid] = min(el)
+        memo: dict[str, int] = {}
+
+        def origen(nid, pila=()):
+            if nid in memo:
+                return memo[nid]
+            if nid in propio:
+                r = propio[nid]
+            else:                                  # sin dato propio (temas, raíces, artículos sin versiones): sus hijos
+                hs = [origen(h, pila + (nid,)) for h in hijos.get(nid, []) if h not in pila]
+                r = min(hs) if hs else 0
+            memo[nid] = r
+            return r
+
+        for nid, n in self.nodos.items():
+            n["origen"] = origen(nid)
+        # lo eliminado arrastra a sus descendientes
+        pila = list(fin)
+        while pila:
+            nid = pila.pop()
+            for h in hijos.get(nid, []):
+                if self.nodos[h]["tipo"] in ("instruccion", "aclaracion", "acto_posterior", "tabla"):
+                    continue                       # la nota del acto que elimina sigue a la vista
+                if fin.get(h, 10**9) > fin[nid]:
+                    fin[h] = fin[nid]
+                    pila.append(h)
+        for nid, k in fin.items():
+            self.nodos[nid]["hasta"] = k
+        propios = ("modifica", "ubica", "cita_acto", "procedencia")
+        self.desde = [self.nodos[s_]["origen"] if k in propios else max(self.nodos[s_]["origen"], self.nodos[t]["origen"])
+                      for s_, t, k, _ in self.aristas]
+
     def similitud(self, por_nodo: float = 2.0):
         """Artículo ↔ artículo por coseno de sus vectores promedio: árbol de expansión máxima + pares sobre un umbral
         que deja unas `por_nodo` aristas por artículo en total."""
@@ -328,11 +393,14 @@ class Grafo:
                 o["g"] = idx_cap[n["capitulo"]]
             if n.get("ajeno"):
                 o["aj"] = 1
+            o["o"] = n.get("origen", 0)
+            if n.get("hasta") is not None:
+                o["h"] = n["hasta"]
             if n.get("versiones"):
                 o["v"] = [[idx_acto.get(v["acto"], -1), v["op"] or "", v["fecha"] or "", 1 if v["vigente"] else 0,
                            v["texto"]] for v in n["versiones"]]
             nodos.append(o)
-        aristas = [[idx[s], idx[t], k, op] for s, t, k, op in self.aristas]
+        aristas = [[idx[s], idx[t], k, op, d] for (s, t, k, op), d in zip(self.aristas, self.desde)]
         return {"concesion": self.arbol["concesion"], "generado": self.arbol.get("generado"),
                 "actos": [{"i": a["id"], "n": a.get("nombre"), "c": nombre_corto(a), "tipo": a.get("tipo"),
                            "f": a.get("fecha"), "d": a["documento"]["id"]} for a in actos],
@@ -340,16 +408,18 @@ class Grafo:
                 "nodos": nodos, "aristas": aristas, "umbral_similitud": round(getattr(self, "umbral_similitud", 0), 3)}
 
     def graphml(self, ruta: Path):
+        orden = [a["id"] for a in self.arbol["actos"]]
         G = nx.DiGraph()
         for nid, n in self.nodos.items():
             G.add_node(nid, tipo=n["tipo"], etiqueta=n.get("etiqueta") or "", titulo=n.get("titulo") or "",
                        capitulo=n.get("capitulo") or "", acto=n.get("acto") or "", fecha=n.get("fecha") or "",
-                       x=float(n["x"]) * 1000, y=float(n["y"]) * 1000, texto=(n.get("texto") or "")[:500])
-        for s, t, k, op in self.aristas:
+                       x=float(n["x"]) * 1000, y=float(n["y"]) * 1000, texto=(n.get("texto") or "")[:500],
+                       acto_origen=orden[n.get("origen", 0)], acto_eliminado=orden[n["hasta"]] if n.get("hasta") is not None else "")
+        for (s, t, k, op), d in zip(self.aristas, self.desde):
             if G.has_edge(s, t):                # GraphML simple: una arista por par, tipos unidos
                 G[s][t]["tipo"] += "+" + k
             else:
-                G.add_edge(s, t, tipo=k, operacion=op)
+                G.add_edge(s, t, tipo=k, operacion=op, acto_desde=orden[d])
         nx.write_graphml(G, ruta)
         return G
 
@@ -377,6 +447,7 @@ def main():
     g = Grafo(args.concesion)
     g.armar()
     g.similitud()
+    g.datar()
     g.disponer(args.iter)
     salida = RAIZ / "salida"
     salida.mkdir(exist_ok=True)

@@ -9,6 +9,7 @@
   --bg: #eef2f4; --panel: #ffffff; --ink: #13212b; --ink-2: #44535f; --muted: #75838f; --line: #d3dbe1;
   --chip: #e3e9ed; --halo: #ffffff; --neutral: #9fb0bd; --act: #13212b; --focus: #0b6bcb;
   --edge-h: rgba(70, 92, 110, .28); --edge-c: rgba(30, 48, 62, .42); --edge-m: #13212b; --edge-s: rgba(70, 92, 110, .35);
+  --bar: #2a78d6; --nuevo: #eb6834;
   --c1: #2a78d6; --c2: #eb6834; --c3: #1baf7a; --c4: #eda100; --c5: #e87ba4; --c6: #008300; --c7: #6250d6; --c8: #e34948;
   --f-ui: "Archivo", "Helvetica Neue", Arial, sans-serif;
   --f-text: "Source Serif 4", Georgia, "Times New Roman", serif;
@@ -18,24 +19,27 @@
   --bg: #0d1418; --panel: #141d23; --ink: #e6ecef; --ink-2: #a9b6bf; --muted: #76848e; --line: #25313a;
   --chip: #1d2830; --halo: #0d1418; --neutral: #5b6d7a; --act: #e6ecef; --focus: #5aa2f0;
   --edge-h: rgba(150, 172, 188, .22); --edge-c: rgba(200, 214, 224, .38); --edge-m: #e6ecef; --edge-s: rgba(150, 172, 188, .30);
+  --bar: #3987e5; --nuevo: #d95926;
   --c1: #3987e5; --c2: #d95926; --c3: #199e70; --c4: #c98500; --c5: #d55181; --c6: #008300; --c7: #9085e9; --c8: #e66767;
   color-scheme: dark } }
 :root[data-theme="dark"] {
   --bg: #0d1418; --panel: #141d23; --ink: #e6ecef; --ink-2: #a9b6bf; --muted: #76848e; --line: #25313a;
   --chip: #1d2830; --halo: #0d1418; --neutral: #5b6d7a; --act: #e6ecef; --focus: #5aa2f0;
   --edge-h: rgba(150, 172, 188, .22); --edge-c: rgba(200, 214, 224, .38); --edge-m: #e6ecef; --edge-s: rgba(150, 172, 188, .30);
+  --bar: #3987e5; --nuevo: #d95926;
   --c1: #3987e5; --c2: #d95926; --c3: #199e70; --c4: #c98500; --c5: #d55181; --c6: #008300; --c7: #9085e9; --c8: #e66767;
   color-scheme: dark }
 html, body { height: 100%; }
 body { background: var(--bg); color: var(--ink); font-family: var(--f-ui); margin: 0; overflow: hidden; }
-.app { height: 100%; display: grid; grid-template-columns: minmax(0, 1fr) 380px; grid-template-rows: auto minmax(0, 1fr); }
+.app { height: 100%; display: grid; grid-template-columns: minmax(0, 1fr) 380px; grid-template-rows: auto minmax(0, 1fr) auto; }
+aside { grid-column: 2; grid-row: 2 / 4; }
 header { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px;
   padding-block: 10px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
   border-bottom: 1px solid var(--line); background: var(--panel); }
 header h1 { font-size: 17px; font-weight: 700; margin: 0; letter-spacing: .01em; }
 header .sub { color: var(--ink-2); font-size: 13px; }
 header .cifras { margin-left: auto; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
-.lienzo { position: relative; min-width: 0; min-height: 0; touch-action: none; }
+.lienzo { grid-column: 1; grid-row: 2; position: relative; min-width: 0; min-height: 0; touch-action: none; }
 canvas { display: block; width: 100%; height: 100%; cursor: grab; }
 canvas.sobre { cursor: pointer; }
 canvas.arrastra { cursor: grabbing; }
@@ -101,11 +105,39 @@ legend { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transfor
 .leyenda button:hover, .leyenda button[aria-pressed="true"] { background: var(--chip); }
 .leyenda .n { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 select { width: 100%; font: 13px var(--f-ui); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 7px 8px; }
+.tiempo { grid-column: 1; grid-row: 3; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; border-top: 1px solid var(--line);
+  background: var(--panel); padding-block: 10px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: 16px; }
+.tiempo .ctl { display: flex; gap: 6px; align-items: center; }
+.tiempo input[type=range] { flex: 1 1 220px; min-width: 0; accent-color: var(--ink); }
+.tiempo select { width: auto; max-width: 100%; flex: 0 1 300px; }
+.tiempo .estado { flex: 1 1 100%; font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.tiempo .estado b { color: var(--ink); font-weight: 600; }
+.tiempo .estado .nuevo { display: inline-block; width: 9px; height: 9px; border-radius: 50%; border: 2px solid var(--nuevo); vertical-align: -1px; margin-right: 4px; }
+.cifras4 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0 0 6px; }
+.cifras4 div { background: var(--bg); border-radius: 6px; padding: 8px 10px; }
+.cifras4 b { display: block; font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.cifras4 span { font-size: 12px; color: var(--ink-2); }
+.indicador { margin-top: 18px; }
+.indicador h3 { margin: 0 0 2px; }
+.expl { font-size: 12px; color: var(--muted); line-height: 1.45; margin: 0 0 6px; }
+.fila { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; gap: 2px 8px; align-items: center; width: 100%; text-align: left;
+  font: 13px var(--f-ui); color: var(--ink); background: none; border: 0; border-radius: 5px; padding: 5px 6px; cursor: pointer; }
+.fila:hover { background: var(--chip); }
+.fila .rk { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; text-align: right; }
+.fila .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fila .nm b { font-family: var(--f-mono); font-weight: 500; margin-right: 6px; }
+.fila .vl { font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; white-space: nowrap; }
+.fila .vl small { color: var(--muted); font-weight: 500; margin-left: 4px; }
+.fila .barra { grid-column: 2 / 4; height: 5px; border-radius: 3px; background: var(--chip); overflow: hidden; }
+.fila .barra i { display: block; height: 100%; border-radius: 3px; background: var(--bar); }
+.fila .sub { grid-column: 2 / 4; font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.version.post { opacity: .5; }
 .nota { font-size: 12px; color: var(--muted); line-height: 1.5; margin-top: 18px; }
 @media (max-width: 760px) {
   body { overflow: auto; }
-  .app { height: auto; min-height: 100%; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 58vh auto; }
-  aside { border-left: 0; border-top: 1px solid var(--line); }
+  .app { height: auto; min-height: 100%; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 56vh auto auto; }
+  aside { grid-column: 1; grid-row: 4; border-left: 0; border-top: 1px solid var(--line); }
+  .tiempo { grid-row: 3; padding-right: max(16px, env(safe-area-inset-right, 0px)); }
   .cuerpo { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
   header .cifras { margin-left: 0; width: 100%; }
 }
@@ -127,10 +159,21 @@ select { width: 100%; font: 13px var(--f-ui); color: var(--ink); background: var
     </div>
     <div class="punta" id="punta" hidden></div>
   </div>
+  <div class="tiempo" id="tiempo">
+    <div class="ctl">
+      <button class="btn" id="b-ant" type="button" aria-label="Acto anterior">◀</button>
+      <button class="btn" id="b-sig" type="button" aria-label="Acto siguiente">▶</button>
+      <button class="btn" id="b-play" type="button" aria-pressed="false">Reproducir</button>
+    </div>
+    <input id="r-tiempo" type="range" min="0" max="0" step="1" value="0" aria-label="Actos incluidos en el grafo">
+    <select id="s-tiempo" aria-label="Mostrar el contrato hasta este acto"></select>
+    <div class="estado" id="estado"></div>
+  </div>
   <aside>
     <div class="pestanas" role="tablist">
       <button id="t-ficha" role="tab" aria-selected="true" type="button">Nodo</button>
-      <button id="t-filtros" role="tab" aria-selected="false" type="button">Filtros y leyenda</button>
+      <button id="t-ind" role="tab" aria-selected="false" type="button">Indicadores</button>
+      <button id="t-filtros" role="tab" aria-selected="false" type="button">Filtros</button>
     </div>
     <div class="cuerpo" id="p-ficha" role="tabpanel">
       <div class="buscar">
@@ -139,6 +182,7 @@ select { width: 100%; font: 13px var(--f-ui); color: var(--ink); background: var
       </div>
       <div id="ficha" class="ficha"></div>
     </div>
+    <div class="cuerpo" id="p-ind" role="tabpanel" hidden><div id="indicadores"></div></div>
     <div class="cuerpo" id="p-filtros" role="tabpanel" hidden>
       <fieldset><legend>Resaltar un acto</legend>
         <select id="f-acto" aria-label="Resaltar un acto"><option value="">Ninguno</option></select>
@@ -194,13 +238,14 @@ const COLORES = 8;
 const cv = $("cv"), ctx = cv.getContext("2d");
 let W = 0, H = 0, dpr = 1;
 const vista = { s: 1, x: 0, y: 0 };      // pantalla = mundo * escala * s + desplazamiento
+let hastaK = ACTOS.length - 1, tiempoTocado = false, nuevos = new Set();
 let escala = 1, sel = -1, hover = -1, resalte = null, historia = [], etiquetas = true, capResaltado = -1;
 let sucio = true;
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 let paleta = {};
 function leerPaleta() {
   paleta = { bg: css("--bg"), ink: css("--ink"), ink2: css("--ink-2"), muted: css("--muted"), halo: css("--halo"),
-    neutral: css("--neutral"), act: css("--act"), focus: css("--focus"), c: [1,2,3,4,5,6,7,8].map(k => css("--c" + k)) };
+    neutral: css("--neutral"), act: css("--act"), focus: css("--focus"), nuevo: css("--nuevo"), c: [1,2,3,4,5,6,7,8].map(k => css("--c" + k)) };
   for (const k in ARISTAS) paleta[k] = css(ARISTAS[k].c);
   sucio = true;
 }
@@ -219,8 +264,9 @@ function medir() {
 const aPantalla = (x, y) => [x * escala * vista.s + vista.x, y * escala * vista.s + vista.y];
 const aMundo = (px, py) => [(px - vista.x) / (escala * vista.s), (py - vista.y) / (escala * vista.s)];
 const rPantalla = i => radio[i] * Math.min(3.2, Math.max(.75, Math.sqrt(vista.s)));
-const nodoVisible = i => visibleTipo[N[i].k];
-const aristaVisible = k => visibleArista[E[k][2]] && nodoVisible(E[k][0]) && nodoVisible(E[k][1]);
+const existe = i => N[i].o <= hastaK && (N[i].h === undefined || N[i].h > hastaK);
+const nodoVisible = i => visibleTipo[N[i].k] && existe(i);
+const aristaVisible = k => visibleArista[E[k][2]] && E[k][4] <= hastaK && nodoVisible(E[k][0]) && nodoVisible(E[k][1]);
 
 function encuadrar(indices) {
   const xs = indices.map(i => N[i].x), ys = indices.map(i => N[i].y);
@@ -255,7 +301,7 @@ function dibujar() {
       let hay = false;
       for (let k = 0; k < E.length; k++) {
         const e = E[k];
-        if (e[2] !== tipo || !nodoVisible(e[0]) || !nodoVisible(e[1])) continue;
+        if (e[2] !== tipo || e[4] > hastaK || !nodoVisible(e[0]) || !nodoVisible(e[1])) continue;
         const dentro = !foco || (sel >= 0 ? (e[0] === sel || e[1] === sel) : (foco.has(e[0]) && foco.has(e[1])));
         if ((pasada === 1) !== dentro && foco) continue;
         const p = pos[e[0]], q = pos[e[1]];
@@ -285,6 +331,16 @@ function dibujar() {
     }
   }
   ctx.globalAlpha = 1;
+  if (tiempoTocado && nuevos.size) {
+    ctx.beginPath();
+    for (const i of nuevos) {
+      if (!nodoVisible(i)) continue;
+      const [x, y] = pos[i], r = rPantalla(i) + 2.5;
+      if (x < -r || y < -r || x > W + r || y > H + r) continue;
+      ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, Math.PI * 2);
+    }
+    ctx.lineWidth = 1.6; ctx.strokeStyle = paleta.nuevo; ctx.stroke();
+  }
   if (sel >= 0 && nodoVisible(sel)) {
     const [x, y] = pos[sel], r = rPantalla(sel) + 4;
     ctx.beginPath(); trazarForma(ctx, forma(N[sel]), x, y, r);
@@ -317,7 +373,7 @@ function etiquetasAnillo(pos) {
   cx /= vis.length; cy /= vis.length;
   let R = 0;
   vis.forEach(i => { R = Math.max(R, Math.hypot(pos[i][0] - cx, pos[i][1] - cy)); });
-  const min = W < 600 ? 40 : 18;
+  const min = W < 600 ? Infinity : 18;   // en pantallas angostas no hay espacio a los lados: la leyenda está en Filtros
   const grupos = [];
   CAPS.forEach((c, g) => {
     const miembros = vis.filter(i => N[i].g === g);
@@ -426,6 +482,17 @@ function centrar(i) {
   encuadrar(grupo.length > 1 ? grupo : [i]);
   if (grupo.length <= 1) { vista.s = Math.max(vista.s, 4); const [x, y] = [N[i].x, N[i].y]; vista.x = W / 2 - x * escala * vista.s; vista.y = H / 2 - y * escala * vista.s; }
 }
+function versionALaFecha(n) {
+  if (!n.v || !n.v.length) return null;
+  let r = null;
+  for (const v of n.v) if (v[0] <= hastaK && v[1] !== "eliminado" && v[1] !== "elimina") r = v;
+  return r;
+}
+function textoALaFecha(n) {
+  const v = versionALaFecha(n);
+  if (!v || hastaK === ACTOS.length - 1) return n.tx || "";
+  return v[4] || n.tx || "";
+}
 function ficha() {
   const caja = $("ficha");
   if (sel < 0) {
@@ -446,11 +513,12 @@ function ficha() {
     <h2>${esc(n.t)}</h2><div class="num">${esc(n.i)}</div>
     ${n.r ? `<div class="ruta">${esc(n.r)}</div>` : ""}
     <dl class="meta">${meta.map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join("")}</dl>
-    ${n.tx ? `<div class="texto">${esc(n.tx)}</div>` : ""}`;
+    ${textoALaFecha(n) ? `<div class="texto">${esc(textoALaFecha(n))}</div>` : ""}`;
+  if (!existe(sel)) h = `<p class="vacio">Este nodo todavía no existe con los actos elegidos en la línea de tiempo (aparece con ${esc((ACTOS[n.o] || {}).c)}).</p>` + h;
   if (n.v && n.v.length) {
-    h += `<h3>Versiones (${n.v.length})</h3>` + n.v.map(v => `<div class="version"><div class="cab">
+    h += `<h3>Versiones (${n.v.length})</h3>` + n.v.map(v => `<div class="version${v[0] > hastaK ? " post" : ""}"><div class="cab">
       <span>${esc((ACTOS[v[0]] || {}).c || "—")}</span><span class="etq">${esc(OPS[v[1]] || v[1])}</span>
-      <span class="etq">${esc(v[2])}</span>${v[3] ? '<span class="etq vig">vigente</span>' : ""}</div>
+      <span class="etq">${esc(v[2])}</span>${v === versionALaFecha(n) ? '<span class="etq vig">vigente a la fecha</span>' : v[0] > hastaK ? '<span class="etq">posterior</span>' : ""}</div>
       ${v[4] ? `<p>${esc(v[4])}</p>` : ""}</div>`).join("");
   }
   // conexiones agrupadas por tipo y dirección
@@ -504,7 +572,8 @@ $("q").addEventListener("input", () => {
     <span class="l"><b>${esc(N[i].l)}</b>${esc(N[i].t === N[i].l ? "" : N[i].t)}</span><span class="etq">${esc((TIPOS[N[i].k] || [""])[0])}</span></button>`).join("")
     : `<p class="vacio">Ningún nodo coincide con «${esc($("q").value)}».</p>`;
   caja.querySelectorAll(".item").forEach(b => b.addEventListener("click", () => {
-    const i = +b.dataset.i; if (!nodoVisible(i)) { visibleTipo[N[i].k] = true; filtros(); }
+    const i = +b.dataset.i; if (!visibleTipo[N[i].k]) { visibleTipo[N[i].k] = true; filtros(); }
+    if (!existe(i)) irA(N[i].o);
     seleccionar(i); centrar(i); caja.innerHTML = ""; $("q").value = "";
   }));
 });
@@ -544,7 +613,7 @@ function leyenda() {
     else { capResaltado = g; resalte = new Set(N.map((n, i) => n.g === g ? i : -1).filter(i => i >= 0)); encuadrar([...resalte]); }
     marcarLeyenda(); sucio = true;
   }));
-  $("nota").textContent = `Color: los ${COLORES} capítulos con más nodos; el resto, en gris. Cuadrados: documentos, actos y lo que proviene de ellos; círculos: el texto de las Bases; rombos: temas, tablas y ficha. El tamaño crece con la cantidad de conexiones. Similitud: coseno ≥ ${D.umbral_similitud} entre los vectores bge-m3 de cada artículo. Árbol generado el ${D.generado}.`;
+  $("nota").textContent = `Línea de tiempo: cada nodo aparece con el acto de su primera versión; una cita entre artículos aparece cuando existen los dos, sin seguir qué versión del texto la contiene. Color: los ${COLORES} capítulos con más nodos; el resto, en gris. Cuadrados: documentos, actos y lo que proviene de ellos; círculos: el texto de las Bases; rombos: temas, tablas y ficha. El tamaño crece con la cantidad de conexiones. Similitud: coseno ≥ ${D.umbral_similitud} entre los vectores bge-m3 de cada artículo. Árbol generado el ${D.generado}.`;
 }
 function marcarLeyenda() { $("leyenda").querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.g === capResaltado))); }
 function selectorActos() {
@@ -561,15 +630,170 @@ function selectorActos() {
     resalte = s; encuadrar([...s]); sucio = true;
   });
 }
+let pestana = "ficha";
 function mostrarPestana(p) {
-  $("t-ficha").setAttribute("aria-selected", String(p === "ficha")); $("t-filtros").setAttribute("aria-selected", String(p === "filtros"));
-  $("p-ficha").hidden = p !== "ficha"; $("p-filtros").hidden = p !== "filtros";
+  pestana = p;
+  for (const [t, c] of [["ficha", "t-ficha"], ["ind", "t-ind"], ["filtros", "t-filtros"]]) {
+    $(c).setAttribute("aria-selected", String(p === t)); $("p-" + t).hidden = p !== t;
+  }
+  if (p === "ind") indicadores();
 }
 $("t-ficha").onclick = () => mostrarPestana("ficha");
 $("t-filtros").onclick = () => mostrarPestana("filtros");
+$("t-ind").onclick = () => mostrarPestana("ind");
 $("b-encuadrar").onclick = () => encuadrar(todos());
 $("b-centrar").onclick = () => centrar(sel);
 $("b-etiquetas").onclick = ev => { etiquetas = !etiquetas; ev.target.setAttribute("aria-pressed", String(etiquetas)); sucio = true; };
+
+// ---------- línea de tiempo ----------
+const ULT = ACTOS.length - 1;
+const etiquetaTiempo = k => k === 0 ? `Solo Bases de Licitación (${ACTOS[0].f || "s/f"})` : `Hasta ${ACTOS[k].c}${ACTOS[k].f ? " (" + ACTOS[k].f + ")" : ""}`;
+function irA(k, tocado = true) {
+  hastaK = Math.max(0, Math.min(ULT, k)); tiempoTocado = tocado;
+  $("r-tiempo").value = hastaK; $("s-tiempo").value = hastaK;
+  nuevos = new Set();
+  N.forEach((n, i) => { if (n.o === hastaK) nuevos.add(i); });
+  let mods = 0;
+  E.forEach(e => { if (e[4] === hastaK && e[2] === "modifica") { nuevos.add(e[1]); mods++; } });
+  const vis = N.reduce((a, _, i) => a + (existe(i) ? 1 : 0), 0);
+  const rel = E.reduce((a, e) => a + (e[4] <= hastaK && existe(e[0]) && existe(e[1]) ? 1 : 0), 0);
+  const creados = N.reduce((a, n) => a + (n.o === hastaK ? 1 : 0), 0);
+  $("estado").innerHTML = `<b>${esc(etiquetaTiempo(hastaK))}</b> · ${vis.toLocaleString("es-CL")} nodos · ${rel.toLocaleString("es-CL")} relaciones` +
+    (hastaK > 0 ? ` · <span class="nuevo"></span>este acto: +${creados} nodos${mods ? `, ${mods} modificaciones` : ""}` : "");
+  if (sel >= 0) { resalte = vecinos(sel); ficha(); }
+  if (pestana === "ind") indicadores();
+  sucio = true;
+}
+let reproduciendo = null;
+function reproducir(si) {
+  clearInterval(reproduciendo); reproduciendo = null;
+  $("b-play").setAttribute("aria-pressed", String(!!si)); $("b-play").textContent = si ? "Pausa" : "Reproducir";
+  if (!si) return;
+  if (hastaK >= ULT) irA(0);
+  reproduciendo = setInterval(() => { if (hastaK >= ULT) reproducir(false); else irA(hastaK + 1); }, 1500);
+}
+$("r-tiempo").max = ULT;
+$("s-tiempo").innerHTML = ACTOS.map((a, k) => `<option value="${k}">${esc(etiquetaTiempo(k))}</option>`).join("");
+$("r-tiempo").addEventListener("input", ev => { reproducir(false); irA(+ev.target.value); });
+$("s-tiempo").addEventListener("change", ev => { reproducir(false); irA(+ev.target.value); });
+$("b-ant").onclick = () => { reproducir(false); irA(hastaK - 1); };
+$("b-sig").onclick = () => { reproducir(false); irA(hastaK + 1); };
+$("b-play").onclick = () => reproducir(!reproduciendo);
+
+// ---------- indicadores (según la línea de tiempo) ----------
+const padreDe = new Array(N.length).fill(-1);
+E.forEach(e => { if (e[2] === "jerarquia") padreDe[e[1]] = e[0]; });
+const articuloDe = N.map((_, i) => { let x = i, n = 0; while (x >= 0 && N[x].k !== "articulo" && n++ < 12) x = padreDe[x]; return x >= 0 && N[x].k === "articulo" ? x : -1; });
+const idxNodo = new Map(N.map((n, i) => [n.i, i]));
+const nodoActo = ACTOS.map(a => idxNodo.get(a.i));
+function calcular(k) {
+  const vivo = i => N[i].o <= k && (N[i].h === undefined || N[i].h > k);
+  const arts = N.map((n, i) => i).filter(i => N[i].k === "articulo" && vivo(i));
+  const citas = new Map(), citasActo = new Map(), desdeCaps = new Map(), desdeActos = new Map(), totalCap = new Map();
+  const red = new Map();                    // red de artículos y actos para la centralidad
+  const unir = (a, b) => { if (a < 0 || b < 0 || a === b) return; for (const [x, y] of [[a, b], [b, a]]) { if (!red.has(x)) red.set(x, new Map()); red.get(x).set(y, (red.get(x).get(y) || 0) + 1); } };
+  const actoMods = ACTOS.map(() => ({ caps: new Set(), mods: 0, menc: 0, ubica: 0 }));
+  const capMods = new Map(), artsMod = new Set();
+  for (const e of E) {
+    if (e[4] > k || !vivo(e[0]) || !vivo(e[1])) continue;
+    const [s, t, tipo] = e;
+    if (tipo === "cita") {
+      citas.set(t, (citas.get(t) || 0) + 1); unir(s, t);
+      const gs = N[s].g, gt = N[t].g;
+      if (gt !== undefined) { totalCap.set(gt, (totalCap.get(gt) || 0) + 1); if (gs !== undefined && gs !== gt) { if (!desdeCaps.has(gt)) desdeCaps.set(gt, new Set()); desdeCaps.get(gt).add(gs); } }
+    } else if (tipo === "cita_acto" || tipo === "modifica" || tipo === "ubica") {
+      const a = N[s].a !== undefined ? N[s].a : (N[s].k === "acto" ? ACTOS.findIndex(x => x.i === N[s].i) : -1);
+      if (a < 0) continue;
+      const art = tipo === "cita_acto" ? t : articuloDe[t];
+      unir(nodoActo[a], art);
+      const g = N[t].g;
+      if (a > 0 && g !== undefined) actoMods[a].caps.add(g);
+      if (tipo === "cita_acto") {
+        citasActo.set(t, (citasActo.get(t) || 0) + 1);
+        if (g !== undefined) { totalCap.set(g, (totalCap.get(g) || 0) + 1); if (!desdeActos.has(g)) desdeActos.set(g, new Set()); desdeActos.get(g).add(a); }
+        actoMods[a].menc++;
+      } else if (tipo === "modifica") {
+        actoMods[a].mods++;
+        if (a > 0) { if (g !== undefined) capMods.set(g, (capMods.get(g) || 0) + 1); if (art >= 0) artsMod.add(art); }
+      } else actoMods[a].ubica++;
+    }
+  }
+  N.forEach((n, i) => { if (vivo(i) && n.o > 0 && n.o <= k && n.g !== undefined && ["acto_posterior", "instruccion", "aclaracion", "tabla"].includes(n.k)) actoMods[n.o].caps.add(n.g); });
+  // centralidad: cercanía (Wasserman-Faust) y PageRank sobre la red de artículos y actos
+  const vs = [...red.keys()], n = vs.length;
+  const cerca = new Map(), pr = new Map();
+  for (const v of vs) {
+    const dist = new Map([[v, 0]]), cola = [v];
+    for (let q = 0; q < cola.length; q++) for (const w of red.get(cola[q]).keys()) if (!dist.has(w)) { dist.set(w, dist.get(cola[q]) + 1); cola.push(w); }
+    let suma = 0; dist.forEach(d => { suma += d; });
+    const r = dist.size - 1;
+    cerca.set(v, suma > 0 && n > 1 ? (r / suma) * (r / (n - 1)) : 0);
+  }
+  vs.forEach(v => pr.set(v, 1 / Math.max(n, 1)));
+  const gradoW = new Map(vs.map(v => [v, [...red.get(v).values()].reduce((a, b) => a + b, 0)]));
+  for (let it = 0; it < 40; it++) {
+    const nuevo = new Map(vs.map(v => [v, .15 / n]));
+    for (const v of vs) for (const [w, c] of red.get(v)) nuevo.set(w, nuevo.get(w) + .85 * pr.get(v) * c / gradoW.get(v));
+    nuevo.forEach((x, v) => pr.set(v, x));
+  }
+  const rankPR = new Map([...pr.entries()].sort((a, b) => b[1] - a[1]).map(([v], r) => [v, r + 1]));
+  const temas = N.map((n, i) => i).filter(i => N[i].k === "tema" && vivo(i)).map(i => {
+    const hijos = E.filter(e => e[2] === "jerarquia" && e[0] === i && e[4] <= k && vivo(e[1])).map(e => e[1]);
+    return { i, v: hijos.length, actos: new Set(hijos.map(h => N[h].a).filter(a => a !== undefined)).size };
+  });
+  return { k, arts, citas, citasActo, desdeCaps, desdeActos, totalCap, actoMods, capMods, artsMod, cerca, pr, rankPR, temas,
+    nodos: N.reduce((a, _, i) => a + (vivo(i) ? 1 : 0), 0), rel: E.reduce((a, e) => a + (e[4] <= k && vivo(e[0]) && vivo(e[1]) ? 1 : 0), 0) };
+}
+let base = null;
+const nfmt = (x, d = 0) => x.toLocaleString("es-CL", { minimumFractionDigits: d, maximumFractionDigits: d });
+const delta = (x, b) => { if (b === undefined || hastaK === 0) return ""; const d = x - b; return d ? `<small>(${d > 0 ? "+" : ""}${nfmt(d)})</small>` : ""; };
+function tarjeta(titulo, expl, filas) {
+  if (!filas.length) return `<section class="indicador"><h3>${titulo}</h3><p class="expl">${expl}</p><p class="vacio">Sin datos con los actos elegidos.</p></section>`;
+  const max = Math.max(...filas.map(f => f.v), 1e-9);
+  return `<section class="indicador"><h3>${titulo}</h3><p class="expl">${expl}</p>` + filas.map((f, r) => `<button class="fila" type="button" data-i="${f.i}">
+    <span class="rk">${r + 1}</span><span class="nm">${f.nom}</span><span class="vl">${f.txt ?? nfmt(f.v)}${f.d || ""}</span>
+    <span class="barra"><i style="width:${Math.max(2, 100 * f.v / max)}%"></i></span>${f.sub ? `<span class="sub">${f.sub}</span>` : ""}</button>`).join("") + `</section>`;
+}
+const nomNodo = i => `<b>${esc(N[i].l)}</b>${esc(N[i].t === N[i].l ? "" : N[i].t.replace(N[i].l, "").trim())}`;
+function indicadores() {
+  if (!base) base = calcular(0);
+  const c = calcular(hastaK), b = base;
+  const capIdx = g => idxNodo.get(CAPS[g].i);
+  let h = `<div class="cifras4">
+    <div><b>${nfmt(c.nodos)}</b><span>nodos ${delta(c.nodos, b.nodos)}</span></div>
+    <div><b>${nfmt(c.rel)}</b><span>relaciones ${delta(c.rel, b.rel)}</span></div>
+    <div><b>${nfmt(c.artsMod.size)}</b><span>artículos modificados por actos</span></div>
+    <div><b>${hastaK + 1}</b><span>de ${ACTOS.length} actos incluidos</span></div></div>
+    <p class="expl">${esc(etiquetaTiempo(hastaK))}. Mueve la línea de tiempo bajo el grafo para comparar; entre paréntesis, el cambio respecto de las Bases solas. Cada fila lleva al nodo en el grafo.</p>`;
+  const tot = i => (c.citas.get(i) || 0) + (c.citasActo.get(i) || 0);
+  h += tarjeta("Artículos más citados", "Cuántas veces lo mencionan otros artículos de las Bases y los fragmentos de los actos.",
+    c.arts.filter(i => tot(i) > 0).sort((x, y) => tot(y) - tot(x)).slice(0, 15).map(i => ({ i, v: tot(i), nom: nomNodo(i),
+      d: delta(tot(i), (b.citas.get(i) || 0) + (b.citasActo.get(i) || 0)),
+      sub: `${c.citas.get(i) || 0} desde artículos · ${c.citasActo.get(i) || 0} desde actos` })));
+  const amplitud = g => (c.desdeCaps.get(g)?.size || 0) + (c.desdeActos.get(g)?.size || 0);
+  h += tarjeta("Capítulos citados desde más partes", "Cuántos capítulos y actos distintos lo citan: mide qué tan transversal es un capítulo, no solo cuántas citas recibe.",
+    CAPS.map((_, g) => g).filter(g => amplitud(g) > 0).sort((x, y) => amplitud(y) - amplitud(x) || (c.totalCap.get(y) || 0) - (c.totalCap.get(x) || 0)).slice(0, 15)
+      .map(g => ({ i: capIdx(g), v: amplitud(g), nom: esc(capCorto(CAPS[g])), d: delta(amplitud(g), (b.desdeCaps.get(g)?.size || 0) + (b.desdeActos.get(g)?.size || 0)),
+        txt: `${amplitud(g)} partes`, sub: `${c.desdeCaps.get(g)?.size || 0} capítulos · ${c.desdeActos.get(g)?.size || 0} actos · ${c.totalCap.get(g) || 0} citas` })));
+  h += tarjeta("Lo más central (cercanía)", "Distancia media, en saltos de cita o modificación, al resto de artículos y actos: lo que la red pone al centro. Entre paréntesis, el puesto en PageRank.",
+    [...c.cerca.entries()].sort((x, y) => y[1] - x[1]).slice(0, 15).map(([i, v]) => ({ i, v, nom: nomNodo(i), txt: nfmt(v, 3),
+      d: `<small>(PR ${c.rankPR.get(i)})</small>`, sub: `${(TIPOS[N[i].k] || [""])[0]}${N[i].g !== undefined ? " · " : ""}${N[i].g !== undefined ? esc(capCorto(CAPS[N[i].g])) : ""}` })));
+  const actos = ACTOS.map((a, k) => k).filter(k => k > 0 && k <= hastaK);
+  h += tarjeta("Actos más transversales", "Cuántos capítulos distintos toca cada acto (modifica, ubica o menciona), con el detalle de lo que hace.",
+    actos.filter(k => c.actoMods[k].caps.size).sort((x, y) => c.actoMods[y].caps.size - c.actoMods[x].caps.size || c.actoMods[y].mods - c.actoMods[x].mods)
+      .map(k => ({ i: nodoActo[k], v: c.actoMods[k].caps.size, txt: `${c.actoMods[k].caps.size} cap.`, nom: esc(ACTOS[k].n),
+        sub: `${c.actoMods[k].mods} modificaciones · ${c.actoMods[k].ubica} ubicaciones · ${c.actoMods[k].menc} menciones` })));
+  h += tarjeta("Capítulos más modificados", "Versiones de su texto creadas por actos posteriores a las Bases.",
+    [...c.capMods.entries()].sort((x, y) => y[1] - x[1]).slice(0, 15).map(([g, v]) => ({ i: capIdx(g), v, nom: esc(capCorto(CAPS[g])) })));
+  h += tarjeta("Temas de los actos posteriores", "Fragmentos de actos que no modifican un artículo y quedaron agrupados por tema.",
+    c.temas.filter(t => t.v).sort((x, y) => y.v - x.v).map(t => ({ i: t.i, v: t.v, nom: esc(N[t.i].t), sub: `${t.actos} actos`, d: delta(t.v, (b.temas.find(x => x.i === t.i) || {}).v ?? 0) })));
+  $("indicadores").innerHTML = h;
+  $("indicadores").querySelectorAll(".fila").forEach(bt => bt.addEventListener("click", () => {
+    const i = +bt.dataset.i; if (!(i >= 0)) return;
+    if (!visibleTipo[N[i].k]) { visibleTipo[N[i].k] = true; filtros(); }
+    seleccionar(i); centrar(i);
+  }));
+}
 
 // ---------- puntero: zoom, arrastre, pellizco, clic ----------
 const punteros = new Map();
@@ -640,7 +864,7 @@ cv.addEventListener("keydown", ev => { if (ev.key === "Escape") { historia = [];
 $("titulo").textContent = `Grafo ${D.concesion.id}`;
 $("subtitulo").textContent = D.concesion.nombre;
 $("cifras").textContent = `${N.length.toLocaleString("es-CL")} nodos · ${E.length.toLocaleString("es-CL")} relaciones · ${ACTOS.length} actos`;
-leerPaleta(); medir(); encuadrar(todos());
+leerPaleta(); medir(); encuadrar(todos()); irA(ULT, false);
 filtros(); leyenda(); selectorActos(); ficha();
 const m = /^#n(\d+)$/.exec(location.hash);
 if (m && N[+m[1]]) { seleccionar(+m[1]); centrar(+m[1]); }

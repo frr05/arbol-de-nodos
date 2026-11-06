@@ -31,7 +31,31 @@ Abre `salida/grafo_RITP.html` en el navegador. Es un solo archivo, con los datos
 
   El enlace `#n<número>` abre el grafo con ese nodo seleccionado.
 
-`salida/grafo_RITP.graphml` contiene el mismo grafo para Gephi o yEd, con las posiciones calculadas. `salida/resumen_RITP.md` tiene el conteo de nodos y relaciones por tipo.
+### Línea de tiempo
+
+La barra bajo el grafo muestra el contrato **hasta un acto**: desde «Solo Bases de Licitación» hasta el último acto, en el orden de aplicación de MT-v3 (Bases, circulares, decreto de adjudicación, convenios, resoluciones…).
+- Se controla con el deslizador, el selector, ◀ ▶ o **Reproducir**.
+- Las posiciones no cambian: al avanzar, los nodos nuevos aparecen en su lugar, y lo que crea o modifica el acto del paso queda marcado con un anillo.
+- La ficha muestra el texto vigente a esa fecha.
+
+Cada nodo existe desde el acto de su primera versión; la estructura de las Bases, desde las Bases. Una cita entre artículos aparece cuando existen los dos artículos: no se sigue qué versión del texto la contiene.
+
+### Indicadores
+
+La pestaña **Indicadores** se recalcula según la línea de tiempo y muestra entre paréntesis el cambio respecto de las Bases solas. Cada fila lleva al nodo en el grafo.
+
+| Indicador | Qué mide |
+|---|---|
+| Artículos más citados | Menciones desde otros artículos y desde los fragmentos de los actos |
+| Capítulos citados desde más partes | Cuántos capítulos y actos distintos citan al capítulo: qué tan transversal es |
+| Lo más central (cercanía) | Distancia media, en saltos de cita o modificación, a los demás artículos y actos, con el puesto en PageRank |
+| Actos más transversales | Capítulos distintos que toca cada acto, con sus modificaciones, ubicaciones y menciones |
+| Capítulos más modificados | Versiones creadas por actos posteriores a las Bases |
+| Temas de los actos posteriores | Fragmentos agrupados por tema (obras, régimen económico, tarifas…) |
+
+La posición en el dibujo no es un indicador: el centro lo ocupan los nodos conectados con muchos grupos distintos (sobre todo las circulares), no necesariamente los más citados.
+
+`salida/grafo_RITP.graphml` contiene el mismo grafo para Gephi o yEd, con las posiciones calculadas y, en cada nodo y arista, el acto desde el que existe (`acto_origen`, `acto_desde`). `salida/resumen_RITP.md` tiene el conteo de nodos y relaciones por tipo.
 
 ## Qué hay en el grafo
 
