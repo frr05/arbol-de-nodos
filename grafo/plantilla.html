@@ -124,6 +124,12 @@ select { width: 100%; font: 13px var(--f-ui); color: var(--ink); background: var
 .fila .barra i { display: block; height: 100%; border-radius: 3px; background: var(--bar); }
 .fila .sub { grid-column: 2 / 4; font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .version.post { opacity: .5; }
+.segmento { display: inline-flex; }
+.segmento .btn:first-child { border-radius: 6px 0 0 6px; }
+.segmento .btn:last-child { border-radius: 0 6px 6px 0; border-left: 0; }
+.claves { display: flex; flex-wrap: wrap; gap: 4px; grid-column: 2 / 4; }
+.fila .marca { justify-self: end; }
+.ppr { margin-top: 10px; }
 .nota { font-size: 12px; color: var(--muted); line-height: 1.5; margin-top: 18px; }
 @media (max-width: 760px) {
   body { overflow: auto; }
@@ -147,6 +153,9 @@ select { width: 100%; font: 13px var(--f-ui); color: var(--ink); background: var
       <button id="b-encuadrar" type="button">Encuadrar todo</button>
       <button id="b-centrar" type="button">Centrar selección</button>
       <button id="b-etiquetas" type="button" class="btn" aria-pressed="true">Etiquetas</button>
+      <span class="segmento" role="group" aria-label="Color de los nodos">
+        <button id="c-cap" type="button" class="btn" aria-pressed="true">Color por capítulo</button><button id="c-grp" type="button" class="btn" aria-pressed="false">por grupo</button>
+      </span>
     </div>
     <div class="punta" id="punta" hidden></div>
   </div>
@@ -154,6 +163,7 @@ select { width: 100%; font: 13px var(--f-ui); color: var(--ink); background: var
     <div class="pestanas" role="tablist">
       <button id="t-ficha" role="tab" aria-selected="true" type="button">Nodo</button>
       <button id="t-ind" role="tab" aria-selected="false" type="button">Indicadores</button>
+      <button id="t-grp" role="tab" aria-selected="false" type="button">Grupos</button>
       <button id="t-filtros" role="tab" aria-selected="false" type="button">Filtros</button>
     </div>
     <div class="cuerpo" id="p-ficha" role="tabpanel">
@@ -164,6 +174,7 @@ select { width: 100%; font: 13px var(--f-ui); color: var(--ink); background: var
       <div id="ficha" class="ficha"></div>
     </div>
     <div class="cuerpo" id="p-ind" role="tabpanel" hidden><div id="indicadores"></div></div>
+    <div class="cuerpo" id="p-grp" role="tabpanel" hidden><div id="grupos"></div></div>
     <div class="cuerpo" id="p-filtros" role="tabpanel" hidden>
       <fieldset><legend>Resaltar un acto</legend>
         <select id="f-acto" aria-label="Resaltar un acto"><option value="">Ninguno</option></select>
@@ -230,8 +241,12 @@ function leerPaleta() {
   for (const k in ARISTAS) paleta[k] = css(ARISTAS[k].c);
   sucio = true;
 }
-const colorNodo = n => n.k === "documento" || n.k === "acto" ? paleta.act :
-  (n.g !== undefined && n.g < COLORES ? paleta.c[n.g] : paleta.neutral);
+let modoColor = "capitulo";
+const COMS = D.comunidades || [];
+const grupoDe = n => modoColor === "grupo" ? n.cm : n.g;
+const colorGrupo = g => g !== undefined && g < COLORES ? paleta.c[g] : paleta.neutral;
+const colorNodo = n => n.k === "documento" || n.k === "acto" ? paleta.act : colorGrupo(grupoDe(n));
+const nombreGrupo = k => `Grupo ${k + 1} · ${(COMS[k].claves || []).slice(0, 3).join(", ")}`;
 const forma = n => (TIPOS[n.k] || ["", "circ"])[1];
 
 function medir() {
@@ -346,13 +361,14 @@ function etiquetasAnillo(pos) {
   vis.forEach(i => { R = Math.max(R, Math.hypot(pos[i][0] - cx, pos[i][1] - cy)); });
   const min = W < 600 ? Infinity : 18;   // en pantallas angostas no hay espacio a los lados: la leyenda está en Filtros
   const grupos = [];
-  CAPS.forEach((c, g) => {
-    const miembros = vis.filter(i => N[i].g === g);
+  const fuentes = modoColor === "grupo" ? COMS.map((c, k) => [k, nombreGrupo(k)]) : CAPS.map((c, g) => [g, capCorto(c)]);
+  fuentes.forEach(([g, t]) => {
+    const miembros = vis.filter(i => grupoDe(N[i]) === g);
     if (miembros.length < min) return;
     let x = 0, y = 0;
     miembros.forEach(i => { x += pos[i][0]; y += pos[i][1]; });
     x /= miembros.length; y /= miembros.length;
-    grupos.push({ g, x, y, t: capCorto(c) });
+    grupos.push({ g, x, y, t });
   });
   // dos columnas (izquierda y derecha del grafo), ordenadas por altura y separadas para no pisarse
   const paso = 17, arriba = 14, abajo = H - 10;
@@ -366,7 +382,7 @@ function etiquetasAnillo(pos) {
     for (let k = col.length - 2; k >= 0; k--) col[k].ly = Math.min(col[k].ly, col[k + 1].ly - paso);
     const lx = lado > 0 ? Math.min(cx + R + 28, W - ancho) : Math.max(cx - R - 28, ancho);
     for (const g of col) {
-      const color = g.g < COLORES ? paleta.c[g.g] : paleta.neutral;
+      const color = colorGrupo(g.g);
       ctx.beginPath(); ctx.moveTo(g.x, g.y); ctx.lineTo(lx - lado * 14, g.ly); ctx.lineTo(lx, g.ly);
       ctx.strokeStyle = color; ctx.globalAlpha = .5; ctx.lineWidth = 1.1; ctx.stroke(); ctx.globalAlpha = 1;
       ctx.beginPath(); ctx.rect(lado > 0 ? lx : lx - 9, g.ly - 4.5, 9, 9); ctx.fillStyle = color; ctx.fill();
@@ -477,6 +493,7 @@ function ficha() {
   if (n.f) meta.push(["Vigente desde", esc(n.f)]);
   if (n.pg) meta.push(["Páginas", n.pg[0] === n.pg[1] ? n.pg[0] : `${n.pg[0]}–${n.pg[1]}`]);
   if (n.g !== undefined) meta.push(["Capítulo", esc(capCorto(CAPS[n.g]))]);
+  if (n.cm !== undefined) meta.push(["Grupo", esc(nombreGrupo(n.cm))]);
   meta.push(["Conexiones", ady[sel].length]);
   let h = `<div class="nav">${historia.length ? '<button class="btn" type="button" id="b-atras">← Atrás</button>' : ""}
     <button class="btn" type="button" id="b-ver">Centrar en el grafo</button><button class="btn" type="button" id="b-limpiar">Quitar selección</button></div>
@@ -492,6 +509,12 @@ function ficha() {
       <span class="etq">${esc(v[2])}</span>${v === versionALaFecha(n) ? '<span class="etq vig">vigente a la fecha</span>' : v[0] > hastaK ? '<span class="etq">posterior</span>' : ""}</div>
       ${v[4] ? `<p>${esc(v[4])}</p>` : ""}</div>`).join("");
   }
+  if (n.sim && n.sim.length) {
+    h += `<h3>Más parecidos por contenido</h3><p class="expl">Coseno entre los vectores bge-m3 del texto de cada artículo (1 = idéntico).</p>` +
+      n.sim.map(([j, v]) => `<button class="item" type="button" data-i="${j}">${marca(j)}<span class="l"><b>${esc(N[j].l)}</b>${esc(N[j].t.replace(N[j].l, "").trim())}</span><span class="etq">${nfmt(v, 2)}</span></button>`).join("");
+  }
+  h += `<h3>Segmentación local</h3><p class="expl">Los nodos más ligados a este según la red visible (PageRank personalizado: caminos que salen de aquí y vuelven a empezar aquí).</p>
+    <button class="btn" type="button" id="b-ppr">Segmentar desde aquí</button><div class="ppr" id="ppr"></div>`;
   // conexiones agrupadas por tipo y dirección
   const grupos = new Map();
   for (const k of ady[sel]) {
@@ -516,6 +539,7 @@ function ficha() {
   caja.innerHTML = h;
   caja.querySelectorAll(".item").forEach(b => b.addEventListener("click", () => { const i = +b.dataset.i; seleccionar(i); centrar(i); }));
   $("b-ver").onclick = () => centrar(sel);
+  $("b-ppr").onclick = () => segmentar(sel);
   $("b-limpiar").onclick = () => { historia = []; seleccionar(-1); };
   if ($("b-atras")) $("b-atras").onclick = () => { const i = historia.pop(); seleccionar(i, { atras: true }); centrar(i); };
 }
@@ -603,14 +627,75 @@ function selectorActos() {
 let pestana = "ficha";
 function mostrarPestana(p) {
   pestana = p;
-  for (const [t, c] of [["ficha", "t-ficha"], ["ind", "t-ind"], ["filtros", "t-filtros"]]) {
+  for (const [t, c] of [["ficha", "t-ficha"], ["ind", "t-ind"], ["grp", "t-grp"], ["filtros", "t-filtros"]]) {
     $(c).setAttribute("aria-selected", String(p === t)); $("p-" + t).hidden = p !== t;
   }
   if (p === "ind") indicadores();
+  if (p === "grp") panelGrupos();
 }
 $("t-ficha").onclick = () => mostrarPestana("ficha");
 $("t-filtros").onclick = () => mostrarPestana("filtros");
 $("t-ind").onclick = () => mostrarPestana("ind");
+$("t-grp").onclick = () => mostrarPestana("grp");
+function modo(m) {
+  modoColor = m;
+  $("c-cap").setAttribute("aria-pressed", String(m === "capitulo")); $("c-grp").setAttribute("aria-pressed", String(m === "grupo"));
+  sucio = true;
+}
+$("c-cap").onclick = () => modo("capitulo");
+$("c-grp").onclick = () => modo("grupo");
+
+// ---------- segmentación local (PageRank personalizado) ----------
+function segmentar(semilla) {
+  const vis = new Array(N.length).fill(false);
+  N.forEach((_, i) => { vis[i] = nodoVisible(i); });
+  const vec = N.map(() => []);
+  E.forEach((e, k) => { if (aristaVisible(k)) { vec[e[0]].push(e[1]); vec[e[1]].push(e[0]); } });
+  let p = new Float64Array(N.length); p[semilla] = 1;
+  for (let it = 0; it < 40; it++) {
+    const q = new Float64Array(N.length); q[semilla] = .15;
+    for (let u = 0; u < N.length; u++) if (p[u] && vec[u].length) { const c = .85 * p[u] / vec[u].length; for (const w of vec[u]) q[w] += c; }
+    p = q;
+  }
+  const orden = N.map((_, i) => i).filter(i => vis[i] && p[i] > 0 && i !== semilla).sort((a, b) => p[b] - p[a]);
+  const top = orden.slice(0, 40);
+  resalte = new Set([semilla, ...top]); sel = semilla; encuadrar([...resalte]); sucio = true;
+  const max = p[top[0]] || 1;
+  $("ppr").innerHTML = `<p class="expl">Resaltados en el grafo: los ${top.length} nodos más ligados. Los 15 primeros:</p>` + top.slice(0, 15).map((i, r) => `<button class="fila" type="button" data-i="${i}">
+    <span class="rk">${r + 1}</span><span class="nm">${nomNodo(i)}</span><span class="vl">${nfmt(100 * p[i] / max, 0)}</span>
+    <span class="barra"><i style="width:${Math.max(2, 100 * p[i] / max)}%"></i></span><span class="sub">${esc((TIPOS[N[i].k] || [""])[0])}${N[i].cm !== undefined ? " · " + esc(nombreGrupo(N[i].cm)) : ""}</span></button>`).join("");
+  $("ppr").querySelectorAll(".fila").forEach(b => b.addEventListener("click", () => { const i = +b.dataset.i; seleccionar(i); centrar(i); }));
+}
+
+// ---------- grupos (comunidades) y pares parecidos ----------
+let grpResaltado = -1;
+function panelGrupos() {
+  const max = Math.max(...COMS.map(c => c.arts.length), 1);
+  let h = `<p class="expl">Grupos de artículos que se citan entre sí o hablan de lo mismo (detección de comunidades Louvain sobre las citas y la similitud de contenido). Cada grupo lleva sus palabras más distintivas y sus capítulos. Clic en un grupo para resaltarlo; «por grupo», arriba del grafo, colorea los nodos con estos grupos.</p>
+    <section class="indicador"><h3>Grupos (${COMS.length})</h3>` +
+    COMS.map((c, k) => `<button class="fila" type="button" data-g="${k}" aria-pressed="${k === grpResaltado}">
+      <span class="marca" style="background:${colorGrupo(k)}"></span><span class="nm"><b>Grupo ${k + 1}</b>${esc(c.caps.map(([g, n]) => CAPS[g].n).join(" · "))}</span>
+      <span class="vl">${c.arts.length} art.</span><span class="barra"><i style="width:${100 * c.arts.length / max}%;background:${colorGrupo(k)}"></i></span>
+      <span class="claves">${c.claves.map(w => `<span class="etq">${esc(w)}</span>`).join("")}</span>
+      <span class="sub">Principales: ${c.top.map(i => esc(N[i].l)).join(", ")}</span></button>`).join("") + `</section>`;
+  const P = D.pares || [];
+  h += `<section class="indicador"><h3>Artículos muy parecidos que no se citan</h3><p class="expl">Pares con el contenido más parecido (coseno bge-m3) sin cita entre ellos ni relación de padre e hijo: candidatos a redundancias, duplicados o reglas que conviene leer juntas.</p>` +
+    P.map(([a, b, v], r) => `<button class="fila" type="button" data-a="${a}" data-b="${b}"><span class="rk">${r + 1}</span>
+      <span class="nm"><b>${esc(N[a].l)}</b>↔ <b>${esc(N[b].l)}</b></span><span class="vl">${nfmt(v, 2)}</span>
+      <span class="sub">${esc(N[a].t.replace(N[a].l, "").trim())} · ${esc(N[b].t.replace(N[b].l, "").trim())}</span></button>`).join("") + `</section>`;
+  $("grupos").innerHTML = h;
+  $("grupos").querySelectorAll("[data-g]").forEach(b => b.addEventListener("click", () => {
+    const k = +b.dataset.g;
+    sel = -1; ficha(); capResaltado = -1; marcarLeyenda();
+    if (grpResaltado === k) { grpResaltado = -1; resalte = null; }
+    else { grpResaltado = k; resalte = new Set(N.map((n, i) => n.cm === k ? i : -1).filter(i => i >= 0 && nodoVisible(i))); encuadrar([...resalte]); }
+    panelGrupos(); sucio = true;
+  }));
+  $("grupos").querySelectorAll("[data-a]").forEach(b => b.addEventListener("click", () => {
+    const a = +b.dataset.a, c = +b.dataset.b;
+    grpResaltado = -1; resalte = new Set([a, c]); sel = -1; encuadrar([a, c]); sucio = true;
+  }));
+}
 $("b-encuadrar").onclick = () => encuadrar(todos());
 $("b-centrar").onclick = () => centrar(sel);
 $("b-etiquetas").onclick = ev => { etiquetas = !etiquetas; ev.target.setAttribute("aria-pressed", String(etiquetas)); sucio = true; };

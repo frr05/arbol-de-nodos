@@ -44,6 +44,16 @@ La pestaña **Indicadores** resume la red con todos los actos y muestra entre pa
 | Capítulos más modificados | Versiones creadas por actos posteriores a las Bases |
 | Temas de los actos posteriores | Fragmentos agrupados por tema (obras, régimen económico, tarifas…) |
 
+### Grupos, similares y segmentación local
+
+- **Pestaña Grupos.** Muestra grupos de artículos que se citan entre sí o hablan de lo mismo. Se detectan con comunidades Louvain sobre las citas y la similitud de contenido, con resolución 1,3 (`--resolucion`).
+  - Cada grupo lleva sus palabras más distintivas (tf-idf entre grupos), sus capítulos y sus artículos más conectados. Los demás nodos heredan el grupo de su artículo; un fragmento o acto, el del grupo que más toca.
+  - El botón «por grupo», sobre el grafo, colorea los nodos con estos grupos.
+  - Debajo van los **pares de artículos muy parecidos que no se citan** ni son padre e hijo: candidatos a redundancias o a reglas que conviene leer juntas.
+- **En la ficha de un artículo:**
+  - **Más parecidos por contenido:** los 8 artículos con mayor coseno bge-m3.
+  - **Segmentar desde aquí:** PageRank personalizado sobre las relaciones visibles. Resalta los 40 nodos más ligados al nodo elegido y los ordena. Si apagas algunos tipos de relación en Filtros, la segmentación cambia.
+
 La posición en el dibujo no es un indicador: el centro lo ocupan los nodos conectados con muchos grupos distintos (sobre todo las circulares), no necesariamente los más citados.
 
 `salida/grafo_RITP.graphml` contiene el mismo grafo para Gephi o yEd, con las posiciones calculadas y, en cada nodo y arista, el acto desde el que existe (`acto_origen`, `acto_desde`). `salida/resumen_RITP.md` tiene el conteo de nodos y relaciones por tipo.

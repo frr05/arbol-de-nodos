@@ -1,6 +1,6 @@
 """Arma el grafo completo de una concesión desde el árbol de nodos versionados de MT-v3.
 
-Uso:  python grafo/armar_grafo.py [RITP] [--iter 600] [--fragmento ruta.html]
+Uso:  python grafo/armar_grafo.py [RITP] [--iter 600] [--resolucion 1.3] [--fragmento ruta.html]
 
 Entrada: data/<ID>/ (copia de MT-v3, ver data/<ID>/FUENTE.md).
 Salida:  salida/grafo_<ID>.html (visor interactivo autónomo), salida/grafo_<ID>.graphml (Gephi / yEd)
@@ -143,6 +143,7 @@ class Grafo:
         if t == "inciso":
             m = re.search(r"-i(\d+)$", n["id"])
             base = n["id"].split(":", 1)[-1].split("-")[0]
+            base = "Portada" if base == "0" else base
             return f"{base} ¶{m.group(1)}" if m else n["id"]
         if t in ("acto_posterior", "formalidad") and n.get("fragmento"):
             return n["fragmento"].split(".")[-1]
@@ -329,8 +330,119 @@ class Grafo:
                 break
             pares.add((int(iu[0][k]), int(iu[1][k])))
         self.umbral_similitud = float(min(S[i, j] for i, j in pares))
+        self.art_ids, self.S = ids, S
         for i, j in sorted(pares):
             self.arista(ids[i], ids[j], "similitud", f"{S[i, j]:.2f}")
+
+    # --- grupos y similares -----------------------------------------------------------------------------
+    VACIAS = set("""a al algo ante antes como con contra cual cuales cuando de del desde donde dos e el ella ellas ellos en
+        entre era es esa ese eso esta este esto estos estas etc fue ha han hasta hay la las le les lo los mas mismo muy
+        ni no nos o otra otro otros otras para pero por que quien se sea segun ser si sin sobre son su sus tal tambien
+        tanto todo todos toda todas tras un una uno unos unas y ya dicha dicho dichos dichas cada caso casos forma
+        presente presentes deber debera deberan sera seran podra podran sido haber sera esta estas articulo articulos
+        numeral numerales bases licitacion sociedad concesionaria concesion contrato ministerio obras publicas mop
+        dgop direccion general inspector fiscal letra indicado indicada indicados establecido establecida segun
+        respectivo respectiva correspondiente correspondientes conforme mediante dentro respecto parte partes
+        senalado senalada senalados presentes siguiente siguientes anterior anteriores durante cualquier""".split())
+
+    def comunidades(self, resolucion: float = 1.0):
+        """Grupos de artículos (Louvain sobre citas y similitud de contenido). Cada grupo se describe con sus
+        palabras distintivas (tf-idf entre grupos), sus capítulos y sus artículos más conectados. Los demás nodos
+        heredan el grupo de su artículo; un fragmento o acto, el del grupo que más toca."""
+        import unicodedata
+        if not getattr(self, "art_ids", None):
+            self.lista_comunidades, self.pares_similares = [], []
+            return
+        ids, S = self.art_ids, self.S
+        en = set(ids)
+        G = nx.Graph()
+        G.add_nodes_from(ids)
+        for s_, t, k, op in self.aristas:
+            if s_ in en and t in en and k in ("cita", "similitud"):
+                w = 1.0 if k == "cita" else float(op)
+                G.add_edge(s_, t, weight=G[s_][t]["weight"] + w if G.has_edge(s_, t) else w)
+        comms = sorted(nx.community.louvain_communities(G, weight="weight", seed=7, resolution=resolucion),
+                       key=lambda c: (-len(c), min(c)))
+        grupo = {a: k for k, c in enumerate(comms) for a in c}
+        # texto de cada artículo: sus incisos vigentes
+        hijos = defaultdict(list)
+        for s_, t, k, _ in self.aristas:
+            if k == "jerarquia":
+                hijos[s_].append(t)
+
+        def texto_de(a):
+            partes, pila = [self.nodos[a].get("titulo") or ""], list(hijos[a])
+            while pila:
+                x = pila.pop()
+                if self.nodos[x]["tipo"] == "inciso":
+                    partes.append(self.nodos[x].get("texto") or "")
+                elif self.nodos[x]["tipo"] == "articulo":
+                    continue                       # los subartículos tienen su propio texto
+                pila += hijos[x]
+            return " ".join(partes)
+
+        def palabras(t):
+            t = unicodedata.normalize("NFD", t.lower())
+            t = "".join(ch for ch in t if unicodedata.category(ch) != "Mn")
+            return [w for w in re.findall(r"[a-zñ]{4,}", t) if w not in self.VACIAS]
+
+        tf = [Counter() for _ in comms]
+        for a in ids:
+            tf[grupo[a]].update(palabras(texto_de(a)))
+        df = Counter(w for c in tf for w in c)
+        claves = []
+        for c in tf:
+            total = sum(c.values()) or 1
+            punt = {w: (n / total) * np.log((1 + len(comms)) / df[w]) for w, n in c.items() if n >= 3}
+            claves.append([w for w, _ in sorted(punt.items(), key=lambda x: -x[1])[:6]])
+        grado = Counter()
+        for s_, t, k, _ in self.aristas:
+            if k in ("cita", "cita_acto", "modifica"):
+                grado[s_] += 1
+                grado[t] += 1
+        self.lista_comunidades = []
+        for k, c in enumerate(comms):
+            caps = Counter(self.nodos[a].get("capitulo") for a in c if self.nodos[a].get("capitulo"))
+            self.lista_comunidades.append({"arts": sorted(c), "claves": claves[k], "caps": caps.most_common(4),
+                                           "top": sorted(c, key=lambda a: -grado[a])[:5]})
+        # herencia: nodos bajo un artículo → su grupo; fragmentos y actos → el grupo que más tocan
+        padre = {t: s_ for s_, t, k, _ in self.aristas if k in ("jerarquia", "ubica")}
+        for nid, n in self.nodos.items():
+            x, vistos = nid, set()
+            while x and x not in grupo and x not in vistos:
+                vistos.add(x)
+                x = padre.get(x)
+            if x in grupo:
+                n["comunidad"] = grupo[x]
+        toca = defaultdict(Counter)
+        for s_, t, k, _ in self.aristas:
+            if k in ("modifica", "ubica", "cita_acto") and self.nodos[t].get("comunidad") is not None:
+                toca[s_][self.nodos[t]["comunidad"]] += 1
+        for nid, cnt in toca.items():
+            if self.nodos[nid].get("comunidad") is None and self.nodos[nid]["tipo"] in ("fragmento", "acto"):
+                self.nodos[nid]["comunidad"] = cnt.most_common(1)[0][0]
+        # similares: los 8 artículos más parecidos a cada uno, y los pares muy parecidos sin cita entre ellos
+        for i, a in enumerate(ids):
+            orden = [j for j in np.argsort(-S[i]) if j != i][:8]
+            self.nodos[a]["similares"] = [(ids[j], round(float(S[i, j]), 3)) for j in orden]
+        citados = {(s_, t) for s_, t, k, _ in self.aristas if k == "cita"}
+
+        def ancestro(a, b):
+            x = padre.get(b)
+            while x:
+                if x == a:
+                    return True
+                x = padre.get(x)
+            return False
+        iu = np.triu_indices(len(ids), 1)
+        self.pares_similares = []
+        for k in np.argsort(-S[iu]):
+            a, b = ids[iu[0][k]], ids[iu[1][k]]
+            if (a, b) in citados or (b, a) in citados or ancestro(a, b) or ancestro(b, a):
+                continue
+            self.pares_similares.append((a, b, round(float(S[iu[0][k], iu[1][k]]), 3)))
+            if len(self.pares_similares) >= 30:
+                break
 
     # --- disposición ----------------------------------------------------------------------------------
     def disponer(self, iteraciones: int):
@@ -394,6 +506,10 @@ class Grafo:
             if n.get("ajeno"):
                 o["aj"] = 1
             o["o"] = n.get("origen", 0)
+            if n.get("comunidad") is not None:
+                o["cm"] = n["comunidad"]
+            if n.get("similares"):
+                o["sim"] = [[idx[x], v] for x, v in n["similares"]]
             if n.get("hasta") is not None:
                 o["h"] = n["hasta"]
             if n.get("versiones"):
@@ -405,6 +521,10 @@ class Grafo:
                 "actos": [{"i": a["id"], "n": a.get("nombre"), "c": nombre_corto(a), "tipo": a.get("tipo"),
                            "f": a.get("fecha"), "d": a["documento"]["id"]} for a in actos],
                 "capitulos": [{"i": c, "t": self.nodos[c]["titulo"], "n": self.nodos[c].get("numero")} for c in caps],
+                "comunidades": [{"arts": [idx[a] for a in c["arts"]], "claves": c["claves"],
+                                 "caps": [[idx_cap[g], n] for g, n in c["caps"] if g in idx_cap],
+                                 "top": [idx[a] for a in c["top"]]} for c in self.lista_comunidades],
+                "pares": [[idx[a], idx[b], v] for a, b, v in self.pares_similares],
                 "nodos": nodos, "aristas": aristas, "umbral_similitud": round(getattr(self, "umbral_similitud", 0), 3)}
 
     def graphml(self, ruta: Path):
@@ -414,7 +534,7 @@ class Grafo:
             G.add_node(nid, tipo=n["tipo"], etiqueta=n.get("etiqueta") or "", titulo=n.get("titulo") or "",
                        capitulo=n.get("capitulo") or "", acto=n.get("acto") or "", fecha=n.get("fecha") or "",
                        x=float(n["x"]) * 1000, y=float(n["y"]) * 1000, texto=(n.get("texto") or "")[:500],
-                       acto_origen=orden[n.get("origen", 0)], acto_eliminado=orden[n["hasta"]] if n.get("hasta") is not None else "")
+                       comunidad=n.get("comunidad", -1), acto_origen=orden[n.get("origen", 0)], acto_eliminado=orden[n["hasta"]] if n.get("hasta") is not None else "")
         for (s, t, k, op), d in zip(self.aristas, self.desde):
             if G.has_edge(s, t):                # GraphML simple: una arista por par, tipos unidos
                 G[s][t]["tipo"] += "+" + k
@@ -442,11 +562,13 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("concesion", nargs="?", default="RITP")
     ap.add_argument("--iter", type=int, default=600)
+    ap.add_argument("--resolucion", type=float, default=1.3, help="resolución de Louvain para los grupos (más alta: más grupos)")
     ap.add_argument("--fragmento", type=Path, help="escribe además el visor sin <html>/<head> (para publicarlo como artefacto)")
     args = ap.parse_args()
     g = Grafo(args.concesion)
     g.armar()
     g.similitud()
+    g.comunidades(args.resolucion)
     g.datar()
     g.disponer(args.iter)
     salida = RAIZ / "salida"
