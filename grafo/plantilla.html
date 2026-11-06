@@ -31,8 +31,8 @@
   color-scheme: dark }
 html, body { height: 100%; }
 body { background: var(--bg); color: var(--ink); font-family: var(--f-ui); margin: 0; overflow: hidden; }
-.app { height: 100%; display: grid; grid-template-columns: minmax(0, 1fr) 380px; grid-template-rows: auto minmax(0, 1fr) auto; }
-aside { grid-column: 2; grid-row: 2 / 4; }
+.app { height: 100%; display: grid; grid-template-columns: minmax(0, 1fr) 380px; grid-template-rows: auto minmax(0, 1fr); }
+aside { grid-column: 2; grid-row: 2; }
 header { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px;
   padding-block: 10px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
   border-bottom: 1px solid var(--line); background: var(--panel); }
@@ -105,14 +105,6 @@ legend { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transfor
 .leyenda button:hover, .leyenda button[aria-pressed="true"] { background: var(--chip); }
 .leyenda .n { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 select { width: 100%; font: 13px var(--f-ui); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 7px 8px; }
-.tiempo { grid-column: 1; grid-row: 3; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; border-top: 1px solid var(--line);
-  background: var(--panel); padding-block: 10px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: 16px; }
-.tiempo .ctl { display: flex; gap: 6px; align-items: center; }
-.tiempo input[type=range] { flex: 1 1 220px; min-width: 0; accent-color: var(--ink); }
-.tiempo select { width: auto; max-width: 100%; flex: 0 1 300px; }
-.tiempo .estado { flex: 1 1 100%; font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
-.tiempo .estado b { color: var(--ink); font-weight: 600; }
-.tiempo .estado .nuevo { display: inline-block; width: 9px; height: 9px; border-radius: 50%; border: 2px solid var(--nuevo); vertical-align: -1px; margin-right: 4px; }
 .cifras4 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0 0 6px; }
 .cifras4 div { background: var(--bg); border-radius: 6px; padding: 8px 10px; }
 .cifras4 b { display: block; font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
@@ -135,9 +127,8 @@ select { width: 100%; font: 13px var(--f-ui); color: var(--ink); background: var
 .nota { font-size: 12px; color: var(--muted); line-height: 1.5; margin-top: 18px; }
 @media (max-width: 760px) {
   body { overflow: auto; }
-  .app { height: auto; min-height: 100%; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 56vh auto auto; }
-  aside { grid-column: 1; grid-row: 4; border-left: 0; border-top: 1px solid var(--line); }
-  .tiempo { grid-row: 3; padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .app { height: auto; min-height: 100%; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 56vh auto; }
+  aside { grid-column: 1; grid-row: 3; border-left: 0; border-top: 1px solid var(--line); }
   .cuerpo { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
   header .cifras { margin-left: 0; width: 100%; }
 }
@@ -158,16 +149,6 @@ select { width: 100%; font: 13px var(--f-ui); color: var(--ink); background: var
       <button id="b-etiquetas" type="button" class="btn" aria-pressed="true">Etiquetas</button>
     </div>
     <div class="punta" id="punta" hidden></div>
-  </div>
-  <div class="tiempo" id="tiempo">
-    <div class="ctl">
-      <button class="btn" id="b-ant" type="button" aria-label="Acto anterior">◀</button>
-      <button class="btn" id="b-sig" type="button" aria-label="Acto siguiente">▶</button>
-      <button class="btn" id="b-play" type="button" aria-pressed="false">Reproducir</button>
-    </div>
-    <input id="r-tiempo" type="range" min="0" max="0" step="1" value="0" aria-label="Actos incluidos en el grafo">
-    <select id="s-tiempo" aria-label="Mostrar el contrato hasta este acto"></select>
-    <div class="estado" id="estado"></div>
   </div>
   <aside>
     <div class="pestanas" role="tablist">
@@ -238,7 +219,7 @@ const COLORES = 8;
 const cv = $("cv"), ctx = cv.getContext("2d");
 let W = 0, H = 0, dpr = 1;
 const vista = { s: 1, x: 0, y: 0 };      // pantalla = mundo * escala * s + desplazamiento
-let hastaK = ACTOS.length - 1, tiempoTocado = false, nuevos = new Set();
+let hastaK = ACTOS.length - 1;          // todos los actos; los indicadores se comparan con las Bases solas (k = 0)
 let escala = 1, sel = -1, hover = -1, resalte = null, historia = [], etiquetas = true, capResaltado = -1;
 let sucio = true;
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
@@ -331,16 +312,6 @@ function dibujar() {
     }
   }
   ctx.globalAlpha = 1;
-  if (tiempoTocado && nuevos.size) {
-    ctx.beginPath();
-    for (const i of nuevos) {
-      if (!nodoVisible(i)) continue;
-      const [x, y] = pos[i], r = rPantalla(i) + 2.5;
-      if (x < -r || y < -r || x > W + r || y > H + r) continue;
-      ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, Math.PI * 2);
-    }
-    ctx.lineWidth = 1.6; ctx.strokeStyle = paleta.nuevo; ctx.stroke();
-  }
   if (sel >= 0 && nodoVisible(sel)) {
     const [x, y] = pos[sel], r = rPantalla(sel) + 4;
     ctx.beginPath(); trazarForma(ctx, forma(N[sel]), x, y, r);
@@ -514,7 +485,7 @@ function ficha() {
     ${n.r ? `<div class="ruta">${esc(n.r)}</div>` : ""}
     <dl class="meta">${meta.map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join("")}</dl>
     ${textoALaFecha(n) ? `<div class="texto">${esc(textoALaFecha(n))}</div>` : ""}`;
-  if (!existe(sel)) h = `<p class="vacio">Este nodo todavía no existe con los actos elegidos en la línea de tiempo (aparece con ${esc((ACTOS[n.o] || {}).c)}).</p>` + h;
+  if (!existe(sel) && n.h !== undefined) h = `<p class="vacio">Este texto fue eliminado por ${esc((ACTOS[n.h] || {}).c)}.</p>` + h;
   if (n.v && n.v.length) {
     h += `<h3>Versiones (${n.v.length})</h3>` + n.v.map(v => `<div class="version${v[0] > hastaK ? " post" : ""}"><div class="cab">
       <span>${esc((ACTOS[v[0]] || {}).c || "—")}</span><span class="etq">${esc(OPS[v[1]] || v[1])}</span>
@@ -573,7 +544,6 @@ $("q").addEventListener("input", () => {
     : `<p class="vacio">Ningún nodo coincide con «${esc($("q").value)}».</p>`;
   caja.querySelectorAll(".item").forEach(b => b.addEventListener("click", () => {
     const i = +b.dataset.i; if (!visibleTipo[N[i].k]) { visibleTipo[N[i].k] = true; filtros(); }
-    if (!existe(i)) irA(N[i].o);
     seleccionar(i); centrar(i); caja.innerHTML = ""; $("q").value = "";
   }));
 });
@@ -613,7 +583,7 @@ function leyenda() {
     else { capResaltado = g; resalte = new Set(N.map((n, i) => n.g === g ? i : -1).filter(i => i >= 0)); encuadrar([...resalte]); }
     marcarLeyenda(); sucio = true;
   }));
-  $("nota").textContent = `Línea de tiempo: cada nodo aparece con el acto de su primera versión; una cita entre artículos aparece cuando existen los dos, sin seguir qué versión del texto la contiene. Color: los ${COLORES} capítulos con más nodos; el resto, en gris. Cuadrados: documentos, actos y lo que proviene de ellos; círculos: el texto de las Bases; rombos: temas, tablas y ficha. El tamaño crece con la cantidad de conexiones. Similitud: coseno ≥ ${D.umbral_similitud} entre los vectores bge-m3 de cada artículo. Árbol generado el ${D.generado}.`;
+  $("nota").textContent = `Cambio respecto de las Bases solas: cada nodo cuenta desde el acto de su primera versión; una cita entre artículos aparece cuando existen los dos, sin seguir qué versión del texto la contiene. Color: los ${COLORES} capítulos con más nodos; el resto, en gris. Cuadrados: documentos, actos y lo que proviene de ellos; círculos: el texto de las Bases; rombos: temas, tablas y ficha. El tamaño crece con la cantidad de conexiones. Similitud: coseno ≥ ${D.umbral_similitud} entre los vectores bge-m3 de cada artículo. Árbol generado el ${D.generado}.`;
 }
 function marcarLeyenda() { $("leyenda").querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.g === capResaltado))); }
 function selectorActos() {
@@ -645,42 +615,9 @@ $("b-encuadrar").onclick = () => encuadrar(todos());
 $("b-centrar").onclick = () => centrar(sel);
 $("b-etiquetas").onclick = ev => { etiquetas = !etiquetas; ev.target.setAttribute("aria-pressed", String(etiquetas)); sucio = true; };
 
-// ---------- línea de tiempo ----------
 const ULT = ACTOS.length - 1;
-const etiquetaTiempo = k => k === 0 ? `Solo Bases de Licitación (${ACTOS[0].f || "s/f"})` : `Hasta ${ACTOS[k].c}${ACTOS[k].f ? " (" + ACTOS[k].f + ")" : ""}`;
-function irA(k, tocado = true) {
-  hastaK = Math.max(0, Math.min(ULT, k)); tiempoTocado = tocado;
-  $("r-tiempo").value = hastaK; $("s-tiempo").value = hastaK;
-  nuevos = new Set();
-  N.forEach((n, i) => { if (n.o === hastaK) nuevos.add(i); });
-  let mods = 0;
-  E.forEach(e => { if (e[4] === hastaK && e[2] === "modifica") { nuevos.add(e[1]); mods++; } });
-  const vis = N.reduce((a, _, i) => a + (existe(i) ? 1 : 0), 0);
-  const rel = E.reduce((a, e) => a + (e[4] <= hastaK && existe(e[0]) && existe(e[1]) ? 1 : 0), 0);
-  const creados = N.reduce((a, n) => a + (n.o === hastaK ? 1 : 0), 0);
-  $("estado").innerHTML = `<b>${esc(etiquetaTiempo(hastaK))}</b> · ${vis.toLocaleString("es-CL")} nodos · ${rel.toLocaleString("es-CL")} relaciones` +
-    (hastaK > 0 ? ` · <span class="nuevo"></span>este acto: +${creados} nodos${mods ? `, ${mods} modificaciones` : ""}` : "");
-  if (sel >= 0) { resalte = vecinos(sel); ficha(); }
-  if (pestana === "ind") indicadores();
-  sucio = true;
-}
-let reproduciendo = null;
-function reproducir(si) {
-  clearInterval(reproduciendo); reproduciendo = null;
-  $("b-play").setAttribute("aria-pressed", String(!!si)); $("b-play").textContent = si ? "Pausa" : "Reproducir";
-  if (!si) return;
-  if (hastaK >= ULT) irA(0);
-  reproduciendo = setInterval(() => { if (hastaK >= ULT) reproducir(false); else irA(hastaK + 1); }, 1500);
-}
-$("r-tiempo").max = ULT;
-$("s-tiempo").innerHTML = ACTOS.map((a, k) => `<option value="${k}">${esc(etiquetaTiempo(k))}</option>`).join("");
-$("r-tiempo").addEventListener("input", ev => { reproducir(false); irA(+ev.target.value); });
-$("s-tiempo").addEventListener("change", ev => { reproducir(false); irA(+ev.target.value); });
-$("b-ant").onclick = () => { reproducir(false); irA(hastaK - 1); };
-$("b-sig").onclick = () => { reproducir(false); irA(hastaK + 1); };
-$("b-play").onclick = () => reproducir(!reproduciendo);
 
-// ---------- indicadores (según la línea de tiempo) ----------
+// ---------- indicadores (todos los actos, comparados con las Bases solas) ----------
 const padreDe = new Array(N.length).fill(-1);
 E.forEach(e => { if (e[2] === "jerarquia") padreDe[e[1]] = e[0]; });
 const articuloDe = N.map((_, i) => { let x = i, n = 0; while (x >= 0 && N[x].k !== "articulo" && n++ < 12) x = padreDe[x]; return x >= 0 && N[x].k === "articulo" ? x : -1; });
@@ -764,7 +701,7 @@ function indicadores() {
     <div><b>${nfmt(c.rel)}</b><span>relaciones ${delta(c.rel, b.rel)}</span></div>
     <div><b>${nfmt(c.artsMod.size)}</b><span>artículos modificados por actos</span></div>
     <div><b>${hastaK + 1}</b><span>de ${ACTOS.length} actos incluidos</span></div></div>
-    <p class="expl">${esc(etiquetaTiempo(hastaK))}. Mueve la línea de tiempo bajo el grafo para comparar; entre paréntesis, el cambio respecto de las Bases solas. Cada fila lleva al nodo en el grafo.</p>`;
+    <p class="expl">Con todos los actos. Entre paréntesis, el cambio respecto de las Bases solas. Cada fila lleva al nodo en el grafo.</p>`;
   const tot = i => (c.citas.get(i) || 0) + (c.citasActo.get(i) || 0);
   h += tarjeta("Artículos más citados", "Cuántas veces lo mencionan otros artículos de las Bases y los fragmentos de los actos.",
     c.arts.filter(i => tot(i) > 0).sort((x, y) => tot(y) - tot(x)).slice(0, 15).map(i => ({ i, v: tot(i), nom: nomNodo(i),
@@ -864,7 +801,7 @@ cv.addEventListener("keydown", ev => { if (ev.key === "Escape") { historia = [];
 $("titulo").textContent = `Grafo ${D.concesion.id}`;
 $("subtitulo").textContent = D.concesion.nombre;
 $("cifras").textContent = `${N.length.toLocaleString("es-CL")} nodos · ${E.length.toLocaleString("es-CL")} relaciones · ${ACTOS.length} actos`;
-leerPaleta(); medir(); encuadrar(todos()); irA(ULT, false);
+leerPaleta(); medir(); encuadrar(todos());
 filtros(); leyenda(); selectorActos(); ficha();
 const m = /^#n(\d+)$/.exec(location.hash);
 if (m && N[+m[1]]) { seleccionar(+m[1]); centrar(+m[1]); }

@@ -31,18 +31,9 @@ Abre `salida/grafo_RITP.html` en el navegador. Es un solo archivo, con los datos
 
   El enlace `#n<número>` abre el grafo con ese nodo seleccionado.
 
-### Línea de tiempo
-
-La barra bajo el grafo muestra el contrato **hasta un acto**: desde «Solo Bases de Licitación» hasta el último acto, en el orden de aplicación de MT-v3 (Bases, circulares, decreto de adjudicación, convenios, resoluciones…).
-- Se controla con el deslizador, el selector, ◀ ▶ o **Reproducir**.
-- Las posiciones no cambian: al avanzar, los nodos nuevos aparecen en su lugar, y lo que crea o modifica el acto del paso queda marcado con un anillo.
-- La ficha muestra el texto vigente a esa fecha.
-
-Cada nodo existe desde el acto de su primera versión; la estructura de las Bases, desde las Bases. Una cita entre artículos aparece cuando existen los dos artículos: no se sigue qué versión del texto la contiene.
-
 ### Indicadores
 
-La pestaña **Indicadores** se recalcula según la línea de tiempo y muestra entre paréntesis el cambio respecto de las Bases solas. Cada fila lleva al nodo en el grafo.
+La pestaña **Indicadores** resume la red con todos los actos y muestra entre paréntesis el cambio respecto de las Bases solas. Cada nodo cuenta desde el acto de su primera versión; la estructura de las Bases, desde las Bases. Una cita entre artículos cuenta cuando existen los dos artículos. Cada fila lleva al nodo en el grafo.
 
 | Indicador | Qué mide |
 |---|---|
