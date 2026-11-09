@@ -12,6 +12,17 @@ La idea visual sigue el «Product Space» de Hidalgo y Hausmann:
 
 Hoy contiene la **Ruta Interportuaria Talcahuano – Penco (RITP)**.
 
+## Ver en línea
+
+Con GitHub Pages activo, el grafo se abre en **https://frr05.github.io/arbol-de-nodos/**. `index.html` es el mismo visor de `salida/grafo_RITP.html` y lo regenera el script.
+
+Para activarlo, una sola vez:
+1. Entra a *Settings → Pages* del repo.
+2. En *Build and deployment*, elige *Source: Deploy from a branch*.
+3. Elige *Branch: `main`* y la carpeta *`/ (root)`*, y guarda con *Save*.
+
+La primera publicación tarda uno o dos minutos. `.nojekyll` hace que Pages sirva los archivos tal cual.
+
 ## Abrir el grafo
 
 Abre `salida/grafo_RITP.html` en el navegador. Es un solo archivo, con los datos incluidos, y no necesita servidor.

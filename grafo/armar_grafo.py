@@ -578,10 +578,12 @@ def main():
     cuerpo = plantilla.replace("/*__DATOS__*/null", datos)
     if args.fragmento:
         args.fragmento.write_text(cuerpo, encoding="utf-8")
-    (salida / f"grafo_{args.concesion}.html").write_text(
-        "<!doctype html>\n<html lang=\"es\">\n<head>\n<meta charset=\"utf-8\">\n"
-        "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, viewport-fit=cover\">\n</head>\n<body>\n"
-        + cuerpo + "\n</body>\n</html>\n", encoding="utf-8")
+    pagina = ("<!doctype html>\n<html lang=\"es\">\n<head>\n<meta charset=\"utf-8\">\n"
+              "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, viewport-fit=cover\">\n</head>\n<body>\n"
+              + cuerpo + "\n</body>\n</html>\n")
+    (salida / f"grafo_{args.concesion}.html").write_text(pagina, encoding="utf-8")
+    if args.concesion == "RITP":            # portada de GitHub Pages: el visor de la concesión piloto
+        (RAIZ / "index.html").write_text(pagina, encoding="utf-8")
     g.graphml(salida / f"grafo_{args.concesion}.graphml")
     (salida / f"resumen_{args.concesion}.md").write_text(g.resumen(), encoding="utf-8")
     print(g.resumen())
