@@ -138,6 +138,46 @@ select { width: 100%; font: 13px var(--f-ui); color: var(--ink); background: var
   .cuerpo { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
   header .cifras { margin-left: 0; width: 100%; }
 }
+/* Ventana de lectura: texto completo del nodo con sus cambios marcados */
+.lector-fondo { position: fixed; inset: 0; z-index: 50; background: rgba(8, 16, 22, .45); display: flex; align-items: center; justify-content: center; padding: 24px 16px; }
+.lector-fondo[hidden] { display: none; }
+.lector { background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; width: min(900px, 100%); max-height: 100%;
+  display: flex; flex-direction: column; box-shadow: 0 18px 50px rgba(0,0,0,.25); min-height: 0; }
+.lector-cab { padding: 14px 18px 10px; border-bottom: 1px solid var(--line); display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; align-items: start; }
+.lector-cab h2 { font-size: 19px; line-height: 1.3; margin: 2px 0 0; text-wrap: balance; }
+.lector-cab .num { font-family: var(--f-mono); font-size: 12px; color: var(--ink-2); }
+.lector-cab .resumen { grid-column: 1 / -1; font-size: 13px; color: var(--ink-2); line-height: 1.45; }
+.lector-herr { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.lector-herr .segmento .btn { border-radius: 0; border-left: 0; }
+.lector-herr .segmento .btn:first-child { border-radius: 6px 0 0 6px; border-left: 1px solid var(--line); }
+.lector-herr .segmento .btn:last-child { border-radius: 0 6px 6px 0; }
+.lector-herr .ley { font-size: 12px; color: var(--muted); display: inline-flex; gap: 10px; flex-wrap: wrap; }
+.lector-cuerpo { overflow-y: auto; padding: 16px 18px 28px; min-height: 0; }
+.lector-cuerpo h4 { font: 700 15px var(--f-ui); margin: 22px 0 8px; }
+.lector-cuerpo h4:first-child { margin-top: 0; }
+.lector-cuerpo h4 .num { font-family: var(--f-mono); font-weight: 500; margin-right: 8px; color: var(--ink-2); }
+.par { position: relative; font-family: var(--f-text); font-size: 16px; line-height: 1.6; margin: 0 0 12px; padding: 2px 0 2px 12px; border-left: 3px solid transparent; }
+.par .txt { white-space: pre-wrap; }
+.par .rot { font: 500 11px var(--f-mono); color: var(--muted); display: block; margin-bottom: 1px; }
+.par.cambio { border-left-color: var(--nuevo); }
+.par.borrado { border-left-color: var(--c8); }
+.par.borrado .txt { text-decoration: line-through; color: var(--muted); }
+.par .chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 4px; font-family: var(--f-ui); }
+.etq.cmb { background: color-mix(in srgb, var(--nuevo) 18%, transparent); color: var(--ink); }
+ins.d { text-decoration: none; background: color-mix(in srgb, var(--c3) 26%, transparent); border-radius: 2px; }
+del.d { color: var(--ink-2); background: color-mix(in srgb, var(--c8) 20%, transparent); text-decoration: line-through; text-decoration-color: var(--c8); border-radius: 2px; }
+.antes { font-size: 14px; color: var(--ink-2); background: var(--bg); border-radius: 6px; padding: 8px 10px; margin: 6px 0 4px; white-space: pre-wrap; }
+.antes b { font: 600 11px var(--f-ui); letter-spacing: .05em; text-transform: uppercase; display: block; margin-bottom: 2px; }
+.par details { font-family: var(--f-ui); font-size: 13px; margin-top: 4px; }
+.par details summary { cursor: pointer; color: var(--ink-2); }
+.paso { border-left: 2px solid var(--line); padding: 2px 0 4px 10px; margin: 6px 0; }
+.paso .txt { font-family: var(--f-text); font-size: 14px; color: var(--ink-2); }
+.notas-actos { margin-top: 26px; border-top: 1px solid var(--line); padding-top: 12px; }
+.nota-acto { font-size: 13px; margin: 0 0 10px; }
+.nota-acto .txt { font-family: var(--f-text); font-size: 14px; color: var(--ink-2); white-space: pre-wrap; margin-top: 2px; }
+.b-leer { margin: 2px 0 12px; font-weight: 600; }
+body.con-lector { overflow: hidden; }
+@media (max-width: 760px) { .lector-fondo { padding: 0; } .lector { border-radius: 0; height: 100%; border: 0; } .par { font-size: 15px; } }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
 </style>
 
@@ -158,6 +198,22 @@ select { width: 100%; font: 13px var(--f-ui); color: var(--ink); background: var
       </span>
     </div>
     <div class="punta" id="punta" hidden></div>
+  </div>
+  <div class="lector-fondo" id="lector" hidden>
+    <div class="lector" role="dialog" aria-modal="true" aria-labelledby="lector-tit">
+      <div class="lector-cab">
+        <div><span class="tipo" id="lector-tipo"></span><h2 id="lector-tit"></h2><div class="num" id="lector-num"></div></div>
+        <button class="btn" type="button" id="lector-cerrar" aria-label="Cerrar">Cerrar ✕</button>
+        <div class="resumen" id="lector-resumen"></div>
+        <div class="lector-herr">
+          <span class="segmento" role="group" aria-label="Vista del texto">
+            <button class="btn" type="button" data-vista="cambios" aria-pressed="true">Vigente con cambios</button><button class="btn" type="button" data-vista="vigente" aria-pressed="false">Vigente limpio</button><button class="btn" type="button" data-vista="original" aria-pressed="false">Original (Bases)</button>
+          </span>
+          <span class="ley" id="lector-ley"><span><ins class="d">agregado</ins></span><span><del class="d">quitado</del></span></span>
+        </div>
+      </div>
+      <div class="lector-cuerpo" id="lector-cuerpo"></div>
+    </div>
   </div>
   <aside>
     <div class="pestanas" role="tablist">
@@ -500,6 +556,7 @@ function ficha() {
     <span class="tipo">${marca(sel)}${esc(tipo[0])}${n.aj ? " · publicación ajena" : ""}</span>
     <h2>${esc(n.t)}</h2><div class="num">${esc(n.i)}</div>
     ${n.r ? `<div class="ruta">${esc(n.r)}</div>` : ""}
+    ${tieneTexto(sel) ? `<button class="btn b-leer" type="button" id="b-leer">Leer texto completo${cuentaCambios(sel) ? ` · ${cuentaCambios(sel)} cambio${cuentaCambios(sel) > 1 ? "s" : ""}` : ""}</button>` : ""}
     <dl class="meta">${meta.map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join("")}</dl>
     ${textoALaFecha(n) ? `<div class="texto">${esc(textoALaFecha(n))}</div>` : ""}`;
   if (!existe(sel) && n.h !== undefined) h = `<p class="vacio">Este texto fue eliminado por ${esc((ACTOS[n.h] || {}).c)}.</p>` + h;
@@ -539,10 +596,159 @@ function ficha() {
   caja.innerHTML = h;
   caja.querySelectorAll(".item").forEach(b => b.addEventListener("click", () => { const i = +b.dataset.i; seleccionar(i); centrar(i); }));
   $("b-ver").onclick = () => centrar(sel);
+  if ($("b-leer")) $("b-leer").onclick = () => abrirLector(sel);
   $("b-ppr").onclick = () => segmentar(sel);
   $("b-limpiar").onclick = () => { historia = []; seleccionar(-1); };
   if ($("b-atras")) $("b-atras").onclick = () => { const i = historia.pop(); seleccionar(i, { atras: true }); centrar(i); };
 }
+
+// ---------- ventana de lectura: texto completo con sus cambios ----------
+const hijos = i => ady[i].map(k => E[k]).filter(e => e[2] === "jerarquia" && e[0] === i).map(e => e[1]);
+const TEXTUALES = new Set(["inciso", "inciso_eliminado", "tabla"]);
+const NOTAS = new Set(["instruccion", "aclaracion", "acto_posterior", "fragmento", "formalidad"]);
+const ESTRUCTURA = new Set(["articulo", "capitulo", "parte", "portada", "tema"]);
+const cacheTexto = new Map();
+function tieneTexto(i) {
+  if (cacheTexto.has(i)) return cacheTexto.get(i);
+  const n = N[i]; let r = false;
+  if (n.k === "raiz" || n.k === "documento") r = false;
+  else if (n.tx && !["acto"].includes(n.k)) r = true;
+  else r = hijos(i).some(j => TEXTUALES.has(N[j].k) || (ESTRUCTURA.has(N[j].k) && tieneTexto(j)));
+  cacheTexto.set(i, r); return r;
+}
+// pasos de un párrafo: un paso por acto, del más antiguo al más reciente
+function pasos(n) {
+  if (!n.v || !n.v.length) return null;
+  const por = new Map();
+  for (const v of n.v) {
+    if (!por.has(v[0])) por.set(v[0], { a: v[0], op: v[1], f: v[2], t: [] });
+    const g = por.get(v[0]); if (v[1] !== "original" && g.op === "original") g.op = v[1];
+    if (v[4]) g.t.push(v[4]);
+  }
+  const ps = [...por.values()].sort((a, b) => a.a - b.a);
+  ps.forEach(p => { p.tx = p.t.join("\n\n"); p.corto = /…\s*$/.test(p.tx); });
+  const u = ps[ps.length - 1];
+  if (n.tx && (u.corto || !u.tx)) { u.tx = n.tx; u.corto = false; }
+  return ps.length > 1 ? ps : null;
+}
+function cuentaCambios(i) {
+  let c = 0;
+  const rec = (j, d) => { const n = N[j]; if (pasos(n) || n.k === "inciso_eliminado") c++; if (d < 6) for (const h of hijos(j)) if (TEXTUALES.has(N[h].k) || ESTRUCTURA.has(N[h].k)) rec(h, d + 1); };
+  rec(i, 0); return c;
+}
+// diferencia por palabras (LCS); las comillas y los saltos de línea no cuentan como cambio
+const norm = w => w.replace(/[“”"«»]/g, "").toLowerCase();
+function diff(a, b) {
+  const A = a.split(/\s+/).filter(Boolean), B = b.split(/\s+/).filter(Boolean);
+  const n = A.length, m = B.length;
+  if (n * m > 3e6) return null;
+  const nA = A.map(norm), nB = B.map(norm);
+  const L = Array.from({ length: n + 1 }, () => new Uint16Array(m + 1));
+  for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--)
+    L[i][j] = nA[i] === nB[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+  const out = []; let i = 0, j = 0;
+  const push = (t, w) => { const u = out[out.length - 1]; if (u && u.t === t) u.w.push(w); else out.push({ t, w: [w] }); };
+  while (i < n && j < m) {
+    if (nA[i] === nB[j]) { push("=", B[j]); i++; j++; }
+    else if (L[i + 1][j] >= L[i][j + 1]) push("-", A[i++]);
+    else push("+", B[j++]);
+  }
+  while (i < n) push("-", A[i++]);
+  while (j < m) push("+", B[j++]);
+  return { partes: out, comun: L[0][0], n, m };
+}
+function htmlDiff(a, b) {
+  const corto = /…\s*$/.test(a);          // versión anterior abreviada en la fuente: solo se compara su comienzo
+  if (corto) a = a.replace(/…\s*$/, "");
+  const d = diff(a, b);
+  if (!d || d.comun < 0.3 * (corto ? d.n : Math.max(d.n, d.m))) return null;   // casi todo distinto: mejor mostrar antes y después
+  let cola = "";
+  if (corto && d.partes.length && d.partes[d.partes.length - 1].t === "+") cola = " " + esc(d.partes.pop().w.join(" ")) + ' <span class="etq" title="La versión anterior está abreviada en la fuente; el resto no se puede comparar">sin comparar</span>';
+  return d.partes.map(p => p.t === "=" ? esc(p.w.join(" ")) : p.t === "+" ? `<ins class="d">${esc(p.w.join(" "))}</ins>` : `<del class="d">${esc(p.w.join(" "))}</del>`).join(" ") + cola;
+}
+let lectorNodo = -1, lectorVista = "cambios", lectorFoco = null;
+function chipsPaso(ps) {
+  return ps.slice(1).map(p => `<span class="etq cmb">${esc((ACTOS[p.a] || {}).c || "—")} · ${esc(OPS[p.op] || p.op)}${p.f ? " · " + esc(p.f) : ""}</span>`).join("");
+}
+function parrafo(j) {
+  const n = N[j], ps = pasos(n), rot = `<span class="rot">${esc(n.l)}</span>`;
+  if (n.k === "inciso_eliminado") {
+    if (lectorVista === "vigente") return "";
+    const chip = `<div class="chips"><span class="etq cmb">Eliminado por ${esc((ACTOS[n.h] || {}).c || "—")}</span></div>`;
+    if (lectorVista === "original") return `<div class="par">${rot}<div class="txt">${esc(n.tx)}</div></div>`;
+    return `<div class="par borrado">${rot}${chip}<div class="txt">${esc(n.tx)}</div></div>`;
+  }
+  if (!ps) {
+    if (lectorVista === "original" && n.o > 0) return "";   // párrafo que no existía en las Bases
+    const nuevo = n.o > 0 && lectorVista === "cambios";
+    return `<div class="par${nuevo ? " cambio" : ""}">${rot}${nuevo ? `<div class="chips"><span class="etq cmb">Agregado por ${esc((ACTOS[n.o] || {}).c || "—")}</span></div>` : ""}<div class="txt">${nuevo ? `<ins class="d">${esc(n.tx)}</ins>` : esc(n.tx || "")}</div></div>`;
+  }
+  const o = ps[0], u = ps[ps.length - 1];
+  if (lectorVista === "original") return `<div class="par">${rot}<div class="txt">${esc(o.tx)}</div>${o.corto ? '<p class="expl">(texto abreviado en la fuente)</p>' : ""}</div>`;
+  if (lectorVista === "vigente") return `<div class="par">${rot}<div class="txt">${esc(u.tx)}</div></div>`;
+  const dh = htmlDiff(o.tx, u.tx);
+  let cuerpo = dh ? `<div class="txt">${dh}</div>`
+    : `<div class="antes"><b>Antes (${esc((ACTOS[o.a] || {}).c)})</b><del class="d">${esc(o.tx)}</del></div><div class="txt"><ins class="d">${esc(u.tx)}</ins></div>`;
+  if (ps.length > 2) cuerpo += `<details><summary>Ver las ${ps.length} versiones paso a paso</summary>` + ps.map((p, k) =>
+    `<div class="paso"><div class="cab"><span>${esc((ACTOS[p.a] || {}).c || "—")}</span> <span class="etq">${esc(OPS[p.op] || p.op)}</span> <span class="etq">${esc(p.f || "")}</span></div>
+     <div class="txt">${k ? (htmlDiff(ps[k - 1].tx, p.tx) || esc(p.tx)) : esc(p.tx)}</div></div>`).join("") + `</details>`;
+  return `<div class="par cambio">${rot}<div class="chips">${chipsPaso(ps)}</div>${cuerpo}</div>`;
+}
+function bloque(i, d, notas) {
+  const n = N[i]; let h = "";
+  if (d > 0) h += `<h4><span class="num">${esc(n.l)}</span>${esc(n.t.replace(n.l, "").trim())}</h4>`;
+  if (TEXTUALES.has(n.k) || (n.tx && !hijos(i).length && !NOTAS.has(n.k))) return h + parrafo(i);
+  for (const j of hijos(i)) {
+    const k = N[j].k;
+    if (TEXTUALES.has(k)) h += parrafo(j);
+    else if (NOTAS.has(k)) notas.push(j);
+    else if (ESTRUCTURA.has(k) && d < 6 && tieneTexto(j)) h += bloque(j, d + 1, notas);
+  }
+  return h;
+}
+function pintarLector() {
+  const i = lectorNodo, n = N[i], notas = [];
+  let h = bloque(i, 0, notas);
+  if (NOTAS.has(n.k) && n.tx) h = `<div class="par">${`<div class="txt">${esc(n.tx)}</div>`}</div>`;
+  if (!h.trim()) h = `<p class="vacio">No hay texto para esta vista.</p>`;
+  if (notas.length && lectorVista !== "original") h += `<div class="notas-actos"><h3>Instrucciones y actos que tocan este texto (${notas.length})</h3>` +
+    notas.map(j => `<div class="nota-acto"><span class="etq">${esc((TIPOS[N[j].k] || [N[j].k])[0])}</span> <b>${esc(N[j].a !== undefined ? (ACTOS[N[j].a] || {}).c : "")}</b> <span class="etq">${esc(N[j].f || "")}</span>
+      <div class="txt">${esc(N[j].tx || N[j].t)}</div></div>`).join("") + `</div>`;
+  $("lector-cuerpo").innerHTML = h;
+  $("lector-ley").hidden = lectorVista !== "cambios";
+  document.querySelectorAll("[data-vista]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.vista === lectorVista)));
+}
+function abrirLector(i) {
+  lectorNodo = i; lectorFoco = document.activeElement;
+  const n = N[i], tipo = TIPOS[n.k] || [n.k];
+  $("lector-tipo").innerHTML = `${marca(i)}${esc(tipo[0])}`;
+  $("lector-tit").textContent = n.t; $("lector-num").textContent = n.r || n.i;
+  // resumen de cambios
+  const actos = new Map(); let pars = 0, mod = 0, elim = 0, nuevos = 0;
+  const rec = (j, d) => { for (const h of (TEXTUALES.has(N[j].k) ? [j] : hijos(j))) { const m = N[h];
+    if (TEXTUALES.has(m.k)) { pars++; const ps = pasos(m);
+      if (m.k === "inciso_eliminado") { elim++; actos.set(m.h, 1); }
+      else if (ps) { mod++; ps.slice(1).forEach(p => actos.set(p.a, 1)); }
+      else if (m.o > 0) { nuevos++; actos.set(m.o, 1); } }
+    else if (ESTRUCTURA.has(m.k) && d < 6 && h !== j) rec(h, d + 1); } };
+  rec(i, 0);
+  const partes = [`${pars} párrafo${pars === 1 ? "" : "s"}`];
+  if (mod) partes.push(`${mod} modificado${mod > 1 ? "s" : ""}`);
+  if (nuevos) partes.push(`${nuevos} agregado${nuevos > 1 ? "s" : ""}`);
+  if (elim) partes.push(`${elim} eliminado${elim > 1 ? "s" : ""}`);
+  $("lector-resumen").innerHTML = esc(partes.join(" · ")) + (actos.size ? ` — cambios introducidos por ${[...actos.keys()].sort((a, b) => a - b).map(a => `<b>${esc((ACTOS[a] || {}).n || "—")}</b>`).join(", ")}.` : " — sin cambios respecto de las Bases originales.");
+  lectorVista = "cambios"; pintarLector();
+  $("lector").hidden = false; document.body.classList.add("con-lector");
+  $("lector-cuerpo").scrollTop = 0; $("lector-cerrar").focus();
+}
+function cerrarLector() {
+  $("lector").hidden = true; document.body.classList.remove("con-lector");
+  if (lectorFoco && lectorFoco.focus) lectorFoco.focus();
+}
+$("lector-cerrar").onclick = cerrarLector;
+$("lector").addEventListener("click", ev => { if (ev.target === $("lector")) cerrarLector(); });
+document.addEventListener("keydown", ev => { if (ev.key === "Escape" && !$("lector").hidden) { ev.stopPropagation(); cerrarLector(); } });
+document.querySelectorAll("[data-vista]").forEach(b => b.addEventListener("click", () => { lectorVista = b.dataset.vista; pintarLector(); }));
 
 // ---------- búsqueda ----------
 const plano = s => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();

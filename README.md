@@ -32,6 +32,12 @@ Abre `salida/grafo_RITP.html` en el navegador. Es un solo archivo, con los datos
   - el acto y el documento de origen, con las páginas;
   - el texto vigente y el historial de versiones (qué acto cambió qué y cuándo);
   - sus conexiones agrupadas por tipo. Cada conexión lleva a ese nodo, y el botón «Atrás» vuelve al anterior.
+- **Leer texto completo**, botón de la ficha: abre el texto entero del artículo o capítulo, con sus subartículos, en tres vistas:
+  - *vigente con cambios*: agregado y quitado, palabra por palabra, con el acto que hizo cada cambio;
+  - *vigente limpio*;
+  - *original de las Bases*.
+
+  Incluye además las instrucciones y actos que tocan ese texto.
 - **Buscar:** por numeral (`1.8.5.1`), por acto (`Circular aclaratoria N°4`) o por una palabra del texto (`multa`).
 - **Filtros:** mostrar u ocultar cada tipo de nodo y de relación, resaltar un acto o un capítulo.
 - **Moverse:**
