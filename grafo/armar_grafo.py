@@ -403,7 +403,7 @@ class Grafo:
         self.lista_comunidades = []
         for k, c in enumerate(comms):
             caps = Counter(self.nodos[a].get("capitulo") for a in c if self.nodos[a].get("capitulo"))
-            self.lista_comunidades.append({"arts": sorted(c), "claves": claves[k], "caps": caps.most_common(4),
+            self.lista_comunidades.append({"arts": sorted(c), "claves": claves[k], "caps": sorted(caps.items(), key=lambda x: (-x[1], x[0]))[:4],
                                            "top": sorted(c, key=lambda a: -grado[a])[:5]})
         # herencia: nodos bajo un artículo → su grupo; fragmentos y actos → el grupo que más tocan
         padre = {t: s_ for s_, t, k, _ in self.aristas if k in ("jerarquia", "ubica")}
