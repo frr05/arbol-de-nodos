@@ -23,6 +23,29 @@ Para activarlo, una sola vez:
 
 La primera publicación tarda uno o dos minutos. `.nojekyll` hace que Pages sirva los archivos tal cual.
 
+## Versiones
+
+El visor trae **varias versiones del árbol** de la misma concesión y se elige cuál ver con el selector **Versión** de la cabecera. Abre la más reciente y recuerda la última elegida en el navegador.
+
+| Versión | Árbol | Nodos del árbol | Insumos |
+|---|---|---:|---|
+| 2026-11-11 (la más reciente) | `data/RITP/versiones/2026-11-11/` | 2 536 | Solo el árbol (ver abajo) |
+| 2026-11-05 (base) | `data/RITP/` (rama `ver-estable-arbol` de MT-v3) | 2 390 | Completos: fragmentos, texto por línea, chunks y vectores |
+
+Una versión que trae solo `nodos_versionados.json` se arma así:
+- sin nodos de fragmento sueltos;
+- las modificaciones salen del acto;
+- las citas desde actos se detectan en el texto de los nodos del árbol;
+- la similitud usa los vectores de la versión base para los artículos con el mismo id.
+
+El visor lo indica bajo el selector. La disposición de una versión parte de la de la base, y los capítulos llevan los mismos colores, para que se puedan comparar.
+
+**Agregar una versión:**
+1. Copia su `nodos_versionados.json` a `data/<ID>/versiones/<fecha>/`. Si la versión tiene insumos propios, agrega `fragmentos/`, `texto/`, `actos.csv`, `CHUNKS_<ID>.jsonl` y `EMBEDDINGS_<ID>.npz`.
+2. Ejecuta `python grafo/armar_grafo.py <ID>`.
+
+Cada versión tiene además su visor, su GraphML y su resumen propios en `salida/` (`grafo_RITP_2026-11-11.html`…). `index.html` reúne todas.
+
 ## Abrir el grafo
 
 Abre `salida/grafo_RITP.html` en el navegador. Es un solo archivo, con los datos incluidos, y no necesita servidor.
@@ -109,7 +132,7 @@ La posición en el dibujo no es un indicador: el centro lo ocupan los nodos cone
 
 ```bash
 pip install -r requirements.txt
-python grafo/armar_grafo.py RITP          # unos 4 minutos la primera vez; después reutiliza la disposición
+python grafo/armar_grafo.py RITP          # todas las versiones de data/RITP; unos 4 min por versión nueva, después reutiliza la disposición
 ```
 
 El script lee `data/RITP/` y escribe todo en `salida/`. `grafo/plantilla.html` es el visor: HTML, CSS y JavaScript sin librerías externas, con un lienzo `<canvas>`.

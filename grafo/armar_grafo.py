@@ -61,10 +61,22 @@ def nombre_corto(a: dict) -> str:
 
 
 class Grafo:
-    def __init__(self, cid: str):
-        self.cid = cid
-        self.d = RAIZ / "data" / cid
-        self.arbol = json.loads((self.d / "nodos_versionados.json").read_text(encoding="utf-8"))
+    def __init__(self, cid: str, version: str = ""):
+        """`version` vacía: el árbol de data/<ID>/ con todos sus insumos. Si no, data/<ID>/versiones/<version>/: si esa
+        carpeta no trae sus propios fragmentos y texto por línea, la versión se arma solo con el árbol."""
+        self.cid, self.version = cid, version
+        self.sufijo = f"_{version}" if version else ""
+        self.d = RAIZ / "data" / cid                                   # insumos de la versión base
+        self.dv = self.d / "versiones" / version if version else self.d
+        self.completo = (self.dv / "fragmentos").exists() and (self.dv / "texto").exists()
+        self.d_vec = self.dv if (self.dv / f"EMBEDDINGS_{cid}.npz").exists() else self.d
+        self.arbol = json.loads((self.dv / "nodos_versionados.json").read_text(encoding="utf-8"))
+        self.notas: list[str] = []
+        if not self.completo:
+            self.notas.append("sin fragmentos sueltos: las modificaciones salen del acto y las citas desde actos se "
+                              "detectan en el texto de los nodos del árbol")
+        if self.d_vec != self.dv:
+            self.notas.append("similitud con los vectores de la versión base, para los artículos con el mismo id")
         self.nodos: dict[str, dict] = {}            # id → nodo del visor
         self.aristas: list[tuple[str, str, str, str]] = []
         self.vistas: set[tuple] = set()
@@ -85,7 +97,7 @@ class Grafo:
         arbol = self.arbol
         actos = arbol["actos"]
         self.actos = {a["id"]: a for a in actos}
-        filas_actos = {f["acto"]: f for f in csv.DictReader(open(self.d / "actos.csv", encoding="utf-8-sig"),
+        filas_actos = {f["acto"]: f for f in csv.DictReader(open((self.dv if (self.dv / "actos.csv").exists() else self.d) / "actos.csv", encoding="utf-8-sig"),
                                                             delimiter=";")}
         # documentos y actos
         for a in actos:
@@ -114,11 +126,11 @@ class Grafo:
         # fragmentos de los actos (los que no son ya un nodo del árbol)
         self.frag_de_linea: dict[tuple[str, int], str] = {}
         self.fragmentos: dict[str, dict] = {}
-        for ruta in sorted((self.d / "fragmentos").glob("*.json")):
+        for ruta in (sorted((self.dv / "fragmentos").glob("*.json")) if self.completo else []):
             datos = json.loads(ruta.read_text(encoding="utf-8"))
             frags = datos["fragmentos"] if isinstance(datos, dict) else datos
             doc = ruta.stem
-            lineas = {ln["i"]: ln for ln in json.loads((self.d / "texto" / f"{doc}.json").read_text(
+            lineas = {ln["i"]: ln for ln in json.loads((self.dv / "texto" / f"{doc}.json").read_text(
                 encoding="utf-8"))["lineas"]}
             for f in frags:
                 self.fragmentos[f["id"]] = f
@@ -179,6 +191,11 @@ class Grafo:
                 quien = n.get(campo)
                 if isinstance(quien, dict) and n["id"] not in modificados:
                     self.arista(quien["id"], n["id"], "modifica", op)
+        if not self.completo:                      # sin nodos de fragmento: el acto procede o ubica directamente
+            for n in arbol["nodos"]:
+                acto = self.nodos[n["id"]].get("acto")
+                if n.get("fragmento") and acto:
+                    self.arista(acto, n["id"], "procedencia" if n["fragmento"] == n["id"] else "ubica")
 
     def aristas_citas(self):
         nodos = {n["id"]: n for n in self.arbol["nodos"]}
@@ -205,6 +222,15 @@ class Grafo:
                 destino = self.articulos.get(clave_numero(r))
                 if destino:
                     self.arista(fid, destino, "cita_acto")
+        if not self.completo:                      # sin `refs` de fragmentos: se leen en el texto de los nodos de actos
+            for n in self.arbol["nodos"]:
+                if n["tipo"] not in ("acto_posterior", "instruccion", "aclaracion", "formalidad"):
+                    continue
+                texto = "\n".join(v.get("texto") or "" for v in n.get("versiones") or [] if v.get("vigente"))
+                for c in citas(texto):
+                    destino = self.articulos.get(clave_numero(c))
+                    if destino:
+                        self.arista(n["id"], destino, "cita_acto")
 
     def grupos(self):
         """Grupo de color = capítulo de las Bases (subiendo por padres); los ocho más grandes llevan color."""
@@ -223,6 +249,9 @@ class Grafo:
                 x = padre.get(x)
         tam = Counter(cap.values())
         self.capitulos = [c for c, _ in tam.most_common()]
+        base = getattr(self, "capitulos_base", None)      # en una versión: los mismos colores que en la base
+        if base:
+            self.capitulos.sort(key=lambda c: (base.index(c) if c in base else len(base), -tam[c]))
         for nid, n in self.nodos.items():
             n["capitulo"] = cap.get(nid)
 
@@ -294,10 +323,10 @@ class Grafo:
     def similitud(self, por_nodo: float = 2.0):
         """Artículo ↔ artículo por coseno de sus vectores promedio: árbol de expansión máxima + pares sobre un umbral
         que deja unas `por_nodo` aristas por artículo en total."""
-        z = np.load(self.d / f"EMBEDDINGS_{self.cid}.npz", allow_pickle=True)
+        z = np.load(self.d_vec / f"EMBEDDINGS_{self.cid}.npz", allow_pickle=True)
         vec = dict(zip([str(i) for i in z["ids"]], z["vectores"]))
         grupos = defaultdict(list)
-        for linea in (self.d / f"CHUNKS_{self.cid}.jsonl").read_text(encoding="utf-8").splitlines():
+        for linea in (self.d_vec / f"CHUNKS_{self.cid}.jsonl").read_text(encoding="utf-8").splitlines():
             c = json.loads(linea)
             m = c["metadatos"]
             art = (m.get("articulo") or {}).get("id")
@@ -445,11 +474,33 @@ class Grafo:
                 break
 
     # --- disposición ----------------------------------------------------------------------------------
+    def posiciones_iniciales(self, G) -> dict | None:
+        """En una versión, parte de la disposición de la versión base: los nodos comunes en su lugar y los nuevos
+        junto a un vecino ya ubicado, para que los dos dibujos se puedan comparar."""
+        base = RAIZ / "salida" / f"disposicion_{self.cid}.json"
+        if not self.version or not base.exists():
+            return None
+        guardado = json.loads(base.read_text(encoding="utf-8"))["pos"]
+        rng = np.random.default_rng(7)
+        pos = {n: np.array(guardado[n], dtype=float) * 50 for n in G if n in guardado}
+        for _ in range(8):
+            for n in G:
+                if n not in pos:
+                    vecinos = [pos[v] for v in G[n] if v in pos]
+                    if vecinos:
+                        pos[n] = np.mean(vecinos, axis=0) + rng.normal(0, 1.5, 2)
+        for n in G:
+            if n not in pos:
+                pos[n] = rng.normal(0, 25, 2)
+        print(f"  disposición inicial desde {base.name}: {sum(n in guardado for n in G)} de {len(G)} nodos en su lugar")
+        return pos
+
+
     def disponer(self, iteraciones: int):
         """Posiciones con ForceAtlas2. Se guardan en salida/disposicion_<ID>.json y se reutilizan mientras no cambien
         los nodos, las aristas ni las iteraciones (calcularlas toma unos minutos)."""
         n_aristas = sum(a[2] in PESOS for a in self.aristas)
-        cache = RAIZ / "salida" / f"disposicion_{self.cid}.json"
+        cache = RAIZ / "salida" / f"disposicion_{self.cid}{self.sufijo}.json"
         if cache.exists():
             guardado = json.loads(cache.read_text(encoding="utf-8"))
             if (guardado.get("iter"), guardado.get("aristas"), set(guardado.get("pos", {}))) == \
@@ -465,7 +516,8 @@ class Grafo:
                 w = PESOS[k] + (G[s][t]["weight"] if G.has_edge(s, t) else 0)
                 G.add_edge(s, t, weight=w)
         # LinLog separa más los grupos (capítulos, actos); los nodos sin aristas se acercan al centro al escalar
-        pos = nx.forceatlas2_layout(G, max_iter=iteraciones, seed=7, weight="weight", scaling_ratio=2.0,
+        inicial = self.posiciones_iniciales(G)
+        pos = nx.forceatlas2_layout(G, pos=inicial, max_iter=iteraciones, seed=7, weight="weight", scaling_ratio=2.0,
                                     gravity=1.0, linlog=True)
         xy = np.array([pos[n] for n in self.nodos], dtype=float)
         xy -= np.median(xy, axis=0)
@@ -518,6 +570,7 @@ class Grafo:
             nodos.append(o)
         aristas = [[idx[s], idx[t], k, op, d] for (s, t, k, op), d in zip(self.aristas, self.desde)]
         return {"concesion": self.arbol["concesion"], "generado": self.arbol.get("generado"),
+                "version": self.version or "base", "notas": self.notas,
                 "actos": [{"i": a["id"], "n": a.get("nombre"), "c": nombre_corto(a), "tipo": a.get("tipo"),
                            "f": a.get("fecha"), "d": a["documento"]["id"]} for a in actos],
                 "capitulos": [{"i": c, "t": self.nodos[c]["titulo"], "n": self.nodos[c].get("numero")} for c in caps],
@@ -548,14 +601,32 @@ class Grafo:
         ka = Counter(k for _, _, k, _ in self.aristas)
         ops = Counter(op for _, _, k, op in self.aristas if k == "modifica")
         lineas = [f"# Grafo {self.cid} · {self.arbol['concesion']['nombre']}", "",
-                  f"Árbol generado en MT-v3 el {self.arbol.get('generado')}. Ver `data/{self.cid}/FUENTE.md`.", "",
+                  f"Árbol generado en MT-v3 el {self.arbol.get('generado')}. Ver `{self.dv.relative_to(RAIZ)}/FUENTE.md`.", "",
                   f"**{len(self.nodos)} nodos** y **{len(self.aristas)} aristas**.", "", "| Tipo de nodo | Cantidad |",
                   "|---|---:|"] + [f"| {k} | {v} |" for k, v in kn.most_common()] + [
                   "", "| Tipo de arista | Cantidad |", "|---|---:|"] + [f"| {k} | {v} |" for k, v in ka.most_common()] + [
                   "", "Operaciones de las aristas `modifica`: " + ", ".join(f"{k} {v}" for k, v in ops.most_common()) + ".",
                   "", f"Similitud: umbral de coseno {getattr(self, 'umbral_similitud', 0):.3f} (árbol de expansión "
-                  "máxima + los pares más parecidos, unas 2 aristas por artículo)."]
+                  "máxima + los pares más parecidos, unas 2 aristas por artículo)."] + (
+                  ["", "Notas de esta versión: " + "; ".join(self.notas) + "."] if self.notas else [])
         return "\n".join(lineas) + "\n"
+
+
+def pagina(cuerpo: str) -> str:
+    return ("<!doctype html>\n<html lang=\"es\">\n<head>\n<meta charset=\"utf-8\">\n"
+            "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, viewport-fit=cover\">\n</head>\n<body>\n"
+            + cuerpo + "\n</body>\n</html>\n")
+
+
+def visor(versiones: list[dict]) -> str:
+    """Plantilla con una o varias versiones incrustadas; abre la marcada `defecto` (la más reciente)."""
+    plantilla = (Path(__file__).parent / "plantilla.html").read_text(encoding="utf-8")
+    js = lambda x: json.dumps(x, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
+    lista = [{k: v[k] for k in ("id", "etiqueta", "generado", "nodos", "relaciones", "notas", "defecto")} for v in versiones]
+    bloques = [f'<script id="versiones" type="application/json">{js(lista)}</script>'] + [
+        f'<script id="datos-{k}" type="application/json">{js(v["datos"])}</script>' for k, v in enumerate(versiones)]
+    assert plantilla.count("<!--__DATOS__-->") == 1
+    return plantilla.replace("<!--__DATOS__-->", "\n".join(bloques))
 
 
 def main():
@@ -563,30 +634,47 @@ def main():
     ap.add_argument("concesion", nargs="?", default="RITP")
     ap.add_argument("--iter", type=int, default=600)
     ap.add_argument("--resolucion", type=float, default=1.3, help="resolución de Louvain para los grupos (más alta: más grupos)")
-    ap.add_argument("--fragmento", type=Path, help="escribe además el visor sin <html>/<head> (para publicarlo como artefacto)")
+    ap.add_argument("--fragmento", type=Path, help="escribe además el visor con todas las versiones sin <html>/<head> "
+                                                   "(para publicarlo como artefacto)")
     args = ap.parse_args()
-    g = Grafo(args.concesion)
-    g.armar()
-    g.similitud()
-    g.comunidades(args.resolucion)
-    g.datar()
-    g.disponer(args.iter)
     salida = RAIZ / "salida"
     salida.mkdir(exist_ok=True)
-    datos = json.dumps(g.datos_visor(), ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
-    plantilla = (Path(__file__).parent / "plantilla.html").read_text(encoding="utf-8")
-    cuerpo = plantilla.replace("/*__DATOS__*/null", datos)
+    carpeta = RAIZ / "data" / args.concesion / "versiones"
+    nombres = [""] + sorted(d.name for d in carpeta.iterdir() if (d / "nodos_versionados.json").exists()) \
+        if carpeta.exists() else [""]
+    versiones = []
+    for nombre in nombres:                 # la base primero: su disposición siembra la de las demás
+        g = Grafo(args.concesion, nombre)
+        if nombre:
+            g.capitulos_base = capitulos_base
+        print(f"\n== {args.concesion} · versión {nombre or 'base'} ({g.arbol.get('generado')})")
+        g.armar()
+        g.similitud()
+        g.comunidades(args.resolucion)
+        g.datar()
+        g.disponer(args.iter)
+        if not nombre:
+            capitulos_base = g.capitulos
+        datos = g.datos_visor()
+        fecha = (g.arbol.get("generado") or "")[:10]
+        versiones.append({"id": nombre or "base", "datos": datos, "generado": g.arbol.get("generado"),
+                          "etiqueta": f"{fecha} · {len(g.arbol['nodos']):,} nodos".replace(",", ".")
+                                      + (" (base, ver-estable-arbol)" if not nombre else ""),
+                          "nodos": len(g.nodos), "relaciones": len(g.aristas), "notas": g.notas, "defecto": False})
+        (salida / f"grafo_{args.concesion}{g.sufijo}.html").write_text(pagina(visor([versiones[-1] | {"defecto": True}])),
+                                                                       encoding="utf-8")
+        g.graphml(salida / f"grafo_{args.concesion}{g.sufijo}.graphml")
+        (salida / f"resumen_{args.concesion}{g.sufijo}.md").write_text(g.resumen(), encoding="utf-8")
+        print(g.resumen())
+    versiones.sort(key=lambda v: v["generado"] or "", reverse=True)       # la más reciente primero y por defecto
+    versiones[0]["defecto"] = True
+    if len(versiones) > 1:
+        versiones[0]["etiqueta"] += " (la más reciente)"
+    cuerpo = visor(versiones)
     if args.fragmento:
         args.fragmento.write_text(cuerpo, encoding="utf-8")
-    pagina = ("<!doctype html>\n<html lang=\"es\">\n<head>\n<meta charset=\"utf-8\">\n"
-              "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, viewport-fit=cover\">\n</head>\n<body>\n"
-              + cuerpo + "\n</body>\n</html>\n")
-    (salida / f"grafo_{args.concesion}.html").write_text(pagina, encoding="utf-8")
-    if args.concesion == "RITP":            # portada de GitHub Pages: el visor de la concesión piloto
-        (RAIZ / "index.html").write_text(pagina, encoding="utf-8")
-    g.graphml(salida / f"grafo_{args.concesion}.graphml")
-    (salida / f"resumen_{args.concesion}.md").write_text(g.resumen(), encoding="utf-8")
-    print(g.resumen())
+    if args.concesion == "RITP":            # portada de GitHub Pages: el visor de la concesión piloto, con sus versiones
+        (RAIZ / "index.html").write_text(pagina(cuerpo), encoding="utf-8")
 
 
 if __name__ == "__main__":

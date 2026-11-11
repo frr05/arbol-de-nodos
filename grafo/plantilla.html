@@ -39,6 +39,9 @@ header { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: basel
 header h1 { font-size: 17px; font-weight: 700; margin: 0; letter-spacing: .01em; }
 header .sub { color: var(--ink-2); font-size: 13px; }
 header .cifras { margin-left: auto; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.version { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-2); }
+.version select { width: auto; max-width: 100%; font: 500 12px var(--f-ui); padding: 4px 6px; }
+header .nota-ver { flex-basis: 100%; font-size: 12px; color: var(--muted); }
 .lienzo { grid-column: 1; grid-row: 2; position: relative; min-width: 0; min-height: 0; touch-action: none; }
 canvas { display: block; width: 100%; height: 100%; cursor: grab; }
 canvas.sobre { cursor: pointer; }
@@ -185,7 +188,9 @@ body.con-lector { overflow: hidden; }
   <header>
     <h1 id="titulo">Grafo RITP</h1>
     <span class="sub" id="subtitulo">Árbol de nodos versionados y actos administrativos</span>
+    <label class="version" id="caja-version">Versión <select id="version" aria-label="Versión del árbol de nodos"></select></label>
     <span class="cifras" id="cifras"></span>
+    <span class="nota-ver" id="nota-ver" hidden></span>
   </header>
   <div class="lienzo" id="lienzo">
     <canvas id="cv" aria-label="Grafo de nodos: haz clic en un nodo para ver su ficha y sus conexiones" role="img"></canvas>
@@ -243,10 +248,22 @@ body.con-lector { overflow: hidden; }
   </aside>
 </div>
 
-<script id="datos" type="application/json">/*__DATOS__*/null</script>
+<!--__DATOS__-->
 <script>
 (() => {
-const D = JSON.parse(document.getElementById("datos").textContent);
+const VERS = JSON.parse(document.getElementById("versiones").textContent);
+const APP = document.querySelector(".app"), HTML_APP = APP.innerHTML;
+let control = null;
+function cargar(k) {
+  if (control) control.abort();              // apaga los escuchas globales y el bucle de dibujo de la versión anterior
+  APP.innerHTML = HTML_APP;
+  control = new AbortController();
+  iniciar(JSON.parse(document.getElementById("datos-" + k).textContent), k, control.signal);
+}
+let inicial = Math.max(0, VERS.findIndex(v => v.defecto));
+try { const g = localStorage.getItem("grafo-version"); const k = VERS.findIndex(v => v.id === g); if (k >= 0) inicial = k; } catch (_) {}
+
+function iniciar(D, versionK, senal) {
 const N = D.nodos, E = D.aristas, ACTOS = D.actos, CAPS = D.capitulos;
 const $ = id => document.getElementById(id);
 
@@ -481,7 +498,7 @@ function etiquetasNodos(pos, foco) {
     if (++n > 220) break;
   }
 }
-function bucle() { if (sucio) dibujar(); requestAnimationFrame(bucle); }
+function bucle() { if (senal.aborted) return; if (sucio) dibujar(); requestAnimationFrame(bucle); }
 
 // ---------- búsqueda de nodo bajo el puntero ----------
 function nodoEn(px, py) {
@@ -747,7 +764,7 @@ function cerrarLector() {
 }
 $("lector-cerrar").onclick = cerrarLector;
 $("lector").addEventListener("click", ev => { if (ev.target === $("lector")) cerrarLector(); });
-document.addEventListener("keydown", ev => { if (ev.key === "Escape" && !$("lector").hidden) { ev.stopPropagation(); cerrarLector(); } });
+document.addEventListener("keydown", ev => { if (ev.key === "Escape" && !$("lector").hidden) { ev.stopPropagation(); cerrarLector(); } }, { signal: senal });
 document.querySelectorAll("[data-vista]").forEach(b => b.addEventListener("click", () => { lectorVista = b.dataset.vista; pintarLector(); }));
 
 // ---------- búsqueda ----------
@@ -1092,14 +1109,30 @@ cv.addEventListener("keydown", ev => { if (ev.key === "Escape") { historia = [];
 $("titulo").textContent = `Grafo ${D.concesion.id}`;
 $("subtitulo").textContent = D.concesion.nombre;
 $("cifras").textContent = `${N.length.toLocaleString("es-CL")} nodos · ${E.length.toLocaleString("es-CL")} relaciones · ${ACTOS.length} actos`;
+$("version").innerHTML = VERS.map((v, k) => `<option value="${k}">${esc(v.etiqueta)}</option>`).join("");
+$("version").value = versionK;
+$("caja-version").hidden = VERS.length < 2;
+$("version").addEventListener("change", ev => {
+  const k = +ev.target.value;
+  try { localStorage.setItem("grafo-version", VERS[k].id); } catch (_) {}
+  try { history.replaceState(null, "", location.pathname + location.search); } catch (_) {}
+  cargar(k);
+});
+if (D.notas && D.notas.length) { $("nota-ver").hidden = false; $("nota-ver").textContent = `Esta versión se armó solo con el árbol: ${D.notas.join("; ")}.`; }
 leerPaleta(); medir(); encuadrar(todos());
 filtros(); leyenda(); selectorActos(); ficha();
 const m = /^#n(\d+)$/.exec(location.hash);
 if (m && N[+m[1]]) { seleccionar(+m[1]); centrar(+m[1]); }
-new ResizeObserver(() => { const s = vista.s; medir(); if (sel < 0 && !resalte) encuadrar(todos()); else sucio = true; }).observe($("lienzo"));
-matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { leerPaleta(); filtros(); leyenda(); ficha(); });
-new MutationObserver(() => { leerPaleta(); filtros(); leyenda(); ficha(); }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-if (document.fonts) document.fonts.ready.then(() => { sucio = true; });
+const ro = new ResizeObserver(() => { medir(); if (sel < 0 && !resalte) encuadrar(todos()); else sucio = true; });
+ro.observe($("lienzo"));
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { leerPaleta(); filtros(); leyenda(); ficha(); }, { signal: senal });
+const mo = new MutationObserver(() => { leerPaleta(); filtros(); leyenda(); ficha(); });
+mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+senal.addEventListener("abort", () => { ro.disconnect(); mo.disconnect(); document.body.classList.remove("con-lector"); });
+if (document.fonts) document.fonts.ready.then(() => { if (!senal.aborted) sucio = true; });
 requestAnimationFrame(bucle);
+}
+
+cargar(inicial);
 })();
 </script>
