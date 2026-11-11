@@ -105,7 +105,9 @@ El botón **«Agrupar automáticamente»**, sobre el grafo, calcula grupos en el
 
 ### Vista de árbol
 
-El botón **«Vista de árbol»** reorganiza el grafo en un **árbol radial** que nace de una raíz **«Contrato»** al centro. Cada anillo es un nivel de profundidad.
+El botón **«Vista de árbol»** reorganiza el grafo como un árbol que nace de una raíz **«Contrato»**. Tiene dos formas:
+- **Planetario** (por defecto): cada nodo es un planeta. Sus hojas (por ejemplo, los incisos de un artículo) giran a su alrededor en un disco con patrón de girasol, y cada hijo con hijos es un sistema propio, empaquetado junto a su padre sin solaparse con sus hermanos. Las hojas se dibujan como puntos y los planetas crecen con su cantidad de satélites. Las relaciones que no son de jerarquía casi no se ven, salvo al seleccionar un nodo.
+- **Radial:** la raíz al centro y cada nivel en un anillo.
 - **Ramas por jerarquía.** Del centro cuelgan:
   - las Bases (partes → capítulos → artículos → subartículos → incisos);
   - los temas y las formalidades;

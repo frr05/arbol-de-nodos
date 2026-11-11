@@ -226,6 +226,9 @@ body.con-lector { overflow: hidden; }
       <span class="segmento" id="caja-ramas" role="group" aria-label="Ramas del árbol" hidden>
         <button id="r-jer" type="button" class="btn" aria-pressed="true">Ramas por jerarquía</button><button id="r-grp" type="button" class="btn" aria-pressed="false">por grupos</button>
       </span>
+      <span class="segmento" id="caja-forma" role="group" aria-label="Forma del árbol" hidden>
+        <button id="f-planeta" type="button" class="btn" aria-pressed="true">Planetario</button><button id="f-radial" type="button" class="btn" aria-pressed="false">Radial</button>
+      </span>
       <button id="b-completo" type="button" class="btn" hidden>Árbol completo</button>
       <button id="b-ruta" type="button" class="btn" aria-pressed="false">Ruta más corta</button>
       <label class="detalle" id="caja-detalle" hidden>Detalle <input id="r-detalle" type="range" min="0.5" max="3" step="0.1" value="1" aria-label="Detalle del agrupamiento: más alto, más grupos"><span id="v-detalle">1,0</span></label>
@@ -369,7 +372,11 @@ function medir() {
 }
 const aPantalla = (x, y) => [x * escala * vista.s + vista.x, y * escala * vista.s + vista.y];
 const aMundo = (px, py) => [(px - vista.x) / (escala * vista.s), (py - vista.y) / (escala * vista.s)];
-const rPantalla = i => radio[i] * Math.min(3.2, Math.max(.75, Math.sqrt(vista.s)));
+const rPantalla = i => {
+  const z = Math.min(3.2, Math.max(.75, Math.sqrt(vista.s)));
+  if (arbol && arbol.forma === "planeta" && arbol.hoja) return (arbol.hoja.has(i) ? 1.5 : Math.min(radio[i], 3 + Math.sqrt(arbol.satelites.get(i) || 0) * .45)) * z;
+  return radio[i] * z;
+};
 const existe = i => N[i].o <= hastaK && (N[i].h === undefined || N[i].h > hastaK);
 const nodoVisible = i => visibleTipo[N[i].k] && existe(i) && (!arbol || !arbol.sub || arbol.sub.has(i));
 const aristaVisible = k => visibleArista[E[k][2]] && E[k][4] <= hastaK && nodoVisible(E[k][0]) && nodoVisible(E[k][1]);
@@ -437,7 +444,7 @@ function dibujar() {
         ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]); hay = true;
       }
       if (!hay) continue;
-      ctx.globalAlpha = ((foco || islas2) && pasada === 0 ? (islas2 ? .05 : .07) : 1) * (arbol && !foco && tipo !== "jerarquia" ? .25 : 1);
+      ctx.globalAlpha = ((foco || islas2) && pasada === 0 ? (islas2 ? .05 : .07) : 1) * (arbol && !foco && tipo !== "jerarquia" ? (arbol.forma === "planeta" ? .07 : .25) : 1);
       ctx.strokeStyle = paleta[tipo];
       ctx.lineWidth = a.w * (foco && pasada === 1 ? 1.6 : 1) * Math.min(1.8, Math.max(.7, Math.sqrt(vista.s) * .8));
       ctx.setLineDash(a.d);
@@ -1252,24 +1259,82 @@ function arbolRadial() {
     }
     return [px, py];
   };
-  ubicar(raiz, -Math.PI / 2, Math.PI * 1.5, 0);
+  arbol.hoja = null;
+  if (arbol.forma === "planeta") planetario(raiz, hijos, destino, posV, aristasV);
+  else ubicar(raiz, -Math.PI / 2, Math.PI * 1.5, 0);
   posV.forEach(([x, y], k) => virtuales.push({ x, y, raiz: k === "R", t: k === "R" ? "Contrato" : etiq.get(k),
     color: k === "R" ? null : colorGrupo(+k.slice(1) >= 0 ? +k.slice(1) : undefined), g: k === "R" ? null : +k.slice(1) }));
   // los nodos fuera del subárbol quedan donde están (ocultos)
   for (let i = 0; i < N.length; i++) if (!destino.has(i)) destino.set(i, [N[i].x, N[i].y]);
-  Object.assign(arbol, { virtuales, aristasV, nivel, prof, radios: Array.from({ length: prof }, (_, d) => radio(d + 1)), cx: 0, cy: 0 });
+  Object.assign(arbol, { virtuales, aristasV, nivel, prof, cx: 0, cy: 0,
+    radios: arbol.forma === "planeta" ? [] : Array.from({ length: prof }, (_, d) => radio(d + 1)) });
   return destino;
+}
+function planetario(raiz, hijos, destino, posV, aristasV) {
+  // «planetario»: cada nodo es un planeta con sus hojas girando alrededor en un disco (patrón de girasol); cada hijo
+  // con hijos es un sistema propio, empaquetado junto al disco de su padre en el primer ángulo libre (sin solaparse
+  // con sus hermanos), empezando por el lado opuesto al abuelo
+  const u = .01, hueco = 1.4 * u, ORO = Math.PI * (3 - Math.sqrt(5)), PASOS = 90;
+  const tiene = x => (hijos.get(x) || []).length > 0;
+  const info = new Map();
+  arbol.hoja = new Set(); arbol.satelites = new Map();
+  const medir = x => {
+    const hs = hijos.get(x) || [], H = hs.filter(h => !tiene(h)), B = hs.filter(tiene);
+    H.forEach(h => { if (typeof h === "number") arbol.hoja.add(h); });
+    if (typeof x === "number") arbol.satelites.set(x, H.length);
+    const r0 = u * (1.2 + 1.05 * Math.sqrt(H.length));
+    B.forEach(medir);
+    B.sort((a, b) => info.get(b).R - info.get(a).R);
+    const puestos = [];                                    // en el marco local: ángulo 0 = lejos del abuelo
+    for (const b of B) {
+      const Rb = info.get(b).R;
+      let d = r0 + Rb + hueco, sitio = null;
+      for (let intento = 0; intento < 400 && !sitio; intento++) {
+        for (let k = 0; k < PASOS && !sitio; k++) {
+          const paso = k === 0 ? 0 : (k % 2 ? (k + 1) / 2 : -k / 2), a = paso * 2 * Math.PI / PASOS;
+          const px = Math.cos(a) * d, py = Math.sin(a) * d;
+          if (puestos.every(q => Math.hypot(q.x - px, q.y - py) >= q.R + Rb + hueco)) sitio = { x: px, y: py, R: Rb, b };
+        }
+        if (!sitio) d += Math.max(hueco, Rb * .15);
+      }
+      puestos.push(sitio);
+    }
+    const R = Math.max(r0, ...puestos.map(q => Math.hypot(q.x, q.y) + q.R));
+    info.set(x, { H, r0, puestos, R });
+  };
+  medir(raiz);
+  const fijar = (x, px, py) => { if (typeof x === "number") destino.set(x, [px, py]); else posV.set(x, [px, py]); };
+  const ubicar = (x, cx, cy, haciaPadre) => {
+    fijar(x, cx, cy);
+    const { H, r0, puestos } = info.get(x);
+    H.forEach((h, k) => {                                  // satélites: girasol de radio r0
+      const r = r0 * Math.sqrt((k + .6) / (H.length + .6)), a = k * ORO;
+      fijar(h, cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+      if (typeof x === "string") aristasV.push([cx, cy, cx + Math.cos(a) * r, cy + Math.sin(a) * r]);
+    });
+    const giro = haciaPadre + Math.PI, c = Math.cos(giro), s2 = Math.sin(giro);
+    for (const q of puestos) {
+      const bx = cx + q.x * c - q.y * s2, by = cy + q.x * s2 + q.y * c;
+      if (typeof x === "string") aristasV.push([cx, cy, bx, by]);
+      ubicar(q.b, bx, by, Math.atan2(cy - by, cx - bx));
+    }
+  };
+  ubicar(raiz, 0, 0, Math.PI / 2);
+  const R = info.get(raiz).R || 1;                         // escala a un radio total ≈ 1
+  destino.forEach(p => { p[0] /= R; p[1] /= R; });
+  posV.forEach(p => { p[0] /= R; p[1] /= R; });
+  aristasV.forEach(l => { for (let k = 0; k < 4; k++) l[k] /= R; });
 }
 function alternarArbol(raizSub = -1) {
   if (!arbol) {
     guardarOriginal();
-    arbol = { porGrupos: false, raizSub };
-    $("b-arbol").setAttribute("aria-pressed", "true"); $("caja-ramas").hidden = false;
+    arbol = { porGrupos: false, raizSub, forma: "planeta" };
+    $("b-arbol").setAttribute("aria-pressed", "true"); $("caja-ramas").hidden = false; $("caja-forma").hidden = false;
   } else if (raizSub >= 0) {
     arbol.raizSub = raizSub;
   } else {
     arbol = null;
-    $("b-arbol").setAttribute("aria-pressed", "false"); $("caja-ramas").hidden = true;
+    $("b-arbol").setAttribute("aria-pressed", "false"); $("caja-ramas").hidden = true; $("caja-forma").hidden = true;
   }
   $("b-completo").hidden = !(arbol && arbol.raizSub >= 0);
   disposicionActual();
@@ -1423,6 +1488,14 @@ $("b-arbol").onclick = () => alternarArbol();
 $("b-completo").onclick = () => { arbol.raizSub = -1; $("b-completo").hidden = true; disposicionActual(); };
 $("r-jer").onclick = () => ramas(false);
 $("r-grp").onclick = () => ramas(true);
+function formaArbol(f) {
+  if (!arbol) return;
+  arbol.forma = f;
+  $("f-planeta").setAttribute("aria-pressed", String(f === "planeta")); $("f-radial").setAttribute("aria-pressed", String(f === "radial"));
+  disposicionActual();
+}
+$("f-planeta").onclick = () => formaArbol("planeta");
+$("f-radial").onclick = () => formaArbol("radial");
 $("b-ruta").onclick = () => alternarRuta();
 $("b-ruta-cancelar").onclick = salirRuta;
 $("r-detalle").addEventListener("input", () => { $("v-detalle").textContent = nfmt(+$("r-detalle").value, 1); });
