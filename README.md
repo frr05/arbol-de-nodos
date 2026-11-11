@@ -101,6 +101,10 @@ El botón **«Agrupar automáticamente»**, sobre el grafo, calcula grupos en el
 - **Detalle:** es la resolución de Louvain. Más alto, más grupos.
 - **Islas:** cada una es un disco de tamaño proporcional al grupo, y sus nodos conservan el ángulo que tenían. Las relaciones entre grupos distintos se atenúan, y los grupos de menos de 3 nodos quedan en «Sueltos».
 - **Pestaña Grupos:** muestra la modularidad (sobre 0,3, grupos claros) y cada grupo con sus palabras clave (tf-idf), sus capítulos y sus tipos de nodo.
+- **Aristas entre grupos** (botón que aparece junto al agrupamiento): una curva entre cada par de islas que tienen relaciones entre sí, con grosor según cuántas son. Las más fuertes llevan su número.
+  - Al pasar el mouse se ve el detalle por tipo de relación, por ejemplo «G1 ↔ G4 · 44 relaciones: 26 citas, 8 citas desde actos…».
+  - Al hacer clic se resaltan los nodos que conectan esos dos grupos.
+  - La pestaña Grupos lista los 20 pares más conectados.
 - Otro clic en el botón vuelve exactamente a la disposición original.
 
 ### Vista de árbol
