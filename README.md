@@ -103,6 +103,27 @@ El botón **«Agrupar automáticamente»**, sobre el grafo, calcula grupos en el
 - **Pestaña Grupos:** muestra la modularidad (sobre 0,3, grupos claros) y cada grupo con sus palabras clave (tf-idf), sus capítulos y sus tipos de nodo.
 - Otro clic en el botón vuelve exactamente a la disposición original.
 
+### Vista de árbol
+
+El botón **«Vista de árbol»** reorganiza el grafo en un **árbol radial** que nace de una raíz **«Contrato»** al centro. Cada anillo es un nivel de profundidad.
+- **Ramas por jerarquía.** Del centro cuelgan:
+  - las Bases (partes → capítulos → artículos → subartículos → incisos);
+  - los temas y las formalidades;
+  - los documentos, con sus actos y los fragmentos de cada acto.
+
+  A cada rama le toca un ángulo proporcional a sus hojas, y los hijos van ordenados por numeral. Las relaciones que no son de jerarquía se ven atenuadas encima.
+- **Ramas por grupos.** Es la conexión con «Agrupar automáticamente»: del centro salen los grupos automáticos (G1…Gn, con sus palabras clave) y de cada grupo cuelgan sus miembros, conservando la jerarquía dentro del grupo. Si el agrupamiento no estaba activo, se activa solo. Con el agrupamiento activo, la vista por jerarquía también colorea por grupo.
+- **«Usar como raíz»** (en la ficha) dibuja solo el subárbol del nodo, por ejemplo el capítulo 1.8. «Árbol completo» vuelve a todo.
+- Apagar el árbol vuelve a las islas, si el agrupamiento sigue activo, o al dibujo original.
+
+### Ruta más corta
+
+El botón **«Ruta más corta»**, o **«Ruta desde aquí»** en la ficha, encuentra el camino con menos pasos entre dos nodos.
+- **Cómo se usa:** eliges el origen y el destino con clic en el grafo o con el buscador.
+- **Relaciones que usa:** las **visibles en Filtros**, sin dirección. La casilla «Evitar jerarquía» busca caminos solo por relaciones de contenido (citas, modificaciones, ubicaciones, similitud).
+- **Resultado:** el camino queda resaltado con números de paso, y en la pestaña Nodo se lista cada tramo con su relación en el sentido correcto. Por ejemplo: «1.9.3 —cita a→ 1.3.2 —mencionado por→ aclaración 2 —ubicado por→ Circular N°4».
+- Si no hay camino con las relaciones visibles, lo avisa.
+
 La posición en el dibujo no es un indicador: el centro lo ocupan los nodos conectados con muchos grupos distintos (sobre todo las circulares), no necesariamente los más citados.
 
 `salida/grafo_RITP.graphml` contiene el mismo grafo para Gephi o yEd, con las posiciones calculadas y, en cada nodo y arista, el acto desde el que existe (`acto_origen`, `acto_desde`). `salida/resumen_RITP.md` tiene el conteo de nodos y relaciones por tipo.

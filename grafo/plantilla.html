@@ -29,6 +29,7 @@
   --bar: #3987e5; --nuevo: #d95926;
   --c1: #3987e5; --c2: #d95926; --c3: #199e70; --c4: #c98500; --c5: #d55181; --c6: #008300; --c7: #9085e9; --c8: #e66767;
   color-scheme: dark }
+[hidden] { display: none !important; }
 html, body { height: 100%; }
 body { background: var(--bg); color: var(--ink); font-family: var(--f-ui); margin: 0; overflow: hidden; }
 .app { height: 100%; display: grid; grid-template-columns: minmax(0, 1fr) 380px; grid-template-rows: auto minmax(0, 1fr); }
@@ -137,6 +138,16 @@ select { width: 100%; font: 13px var(--f-ui); color: var(--ink); background: var
   border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; }
 .detalle input { width: 110px; accent-color: var(--ink); }
 .detalle span { font-variant-numeric: tabular-nums; min-width: 2.2em; }
+.franja { position: absolute; left: 12px; right: 12px; bottom: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
+  background: var(--panel); border: 1px solid var(--focus); border-radius: 8px; padding: 8px 12px; font-size: 13px; box-shadow: 0 4px 14px rgba(0,0,0,.12); }
+.franja #franja-txt { flex: 1 1 200px; font-weight: 600; }
+.franja label { display: inline-flex; gap: 6px; align-items: center; color: var(--ink-2); }
+.ruta { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin: 0 0 14px; }
+.ruta h3 { margin-top: 0; }
+.paso-ruta { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 2px 8px; align-items: center; }
+.paso-ruta .nro { width: 20px; height: 20px; border-radius: 50%; background: var(--focus); color: var(--panel); font: 700 11px var(--f-ui);
+  display: inline-flex; align-items: center; justify-content: center; }
+.paso-ruta .rel { grid-column: 2; font-size: 12px; color: var(--ink-2); padding: 2px 0 4px 6px; border-left: 2px solid var(--focus); margin-left: -16px; padding-left: 14px; }
 .nota { font-size: 12px; color: var(--muted); line-height: 1.5; margin-top: 18px; }
 @media (max-width: 760px) {
   body { overflow: auto; }
@@ -206,7 +217,18 @@ body.con-lector { overflow: hidden; }
         <button id="c-cap" type="button" class="btn" aria-pressed="true">Color por capítulo</button><button id="c-grp" type="button" class="btn" aria-pressed="false">por grupo</button>
       </span>
       <button id="b-auto" type="button" class="btn" aria-pressed="false">Agrupar automáticamente</button>
+      <button id="b-arbol" type="button" class="btn" aria-pressed="false">Vista de árbol</button>
+      <span class="segmento" id="caja-ramas" role="group" aria-label="Ramas del árbol" hidden>
+        <button id="r-jer" type="button" class="btn" aria-pressed="true">Ramas por jerarquía</button><button id="r-grp" type="button" class="btn" aria-pressed="false">por grupos</button>
+      </span>
+      <button id="b-completo" type="button" class="btn" hidden>Árbol completo</button>
+      <button id="b-ruta" type="button" class="btn" aria-pressed="false">Ruta más corta</button>
       <label class="detalle" id="caja-detalle" hidden>Detalle <input id="r-detalle" type="range" min="0.5" max="3" step="0.1" value="1" aria-label="Detalle del agrupamiento: más alto, más grupos"><span id="v-detalle">1,0</span></label>
+    </div>
+    <div class="franja" id="franja" hidden>
+      <span id="franja-txt"></span>
+      <label><input type="checkbox" id="c-evitar"> Evitar jerarquía</label>
+      <button class="btn" type="button" id="b-ruta-cancelar">Cancelar</button>
     </div>
     <div class="punta" id="punta" hidden></div>
   </div>
@@ -238,6 +260,7 @@ body.con-lector { overflow: hidden; }
         <input id="q" type="search" placeholder="Buscar numeral, acto o texto (p. ej. 1.8.5.1, multa)" autocomplete="off" aria-label="Buscar nodo">
         <div class="resultados" id="resultados"></div>
       </div>
+      <div id="ruta-panel"></div>
       <div id="ficha" class="ficha"></div>
     </div>
     <div class="cuerpo" id="p-ind" role="tabpanel" hidden><div id="indicadores"></div></div>
@@ -309,13 +332,16 @@ const COLORES = 8;
 const cv = $("cv"), ctx = cv.getContext("2d");
 let W = 0, H = 0, dpr = 1;
 const vista = { s: 1, x: 0, y: 0 };      // pantalla = mundo * escala * s + desplazamiento
-let hastaK = ACTOS.length - 1;          // todos los actos; los indicadores se comparan con las Bases solas (k = 0)
+let hastaK = ACTOS.length - 1;
+let posOriginal = null;          // posiciones antes de islas o árbol; se restauran al apagar ambos
+let arbol = null;                // vista de árbol: { porGrupos, raizSub, sub, virtuales, aristasV, nivel, rmax }
+let rutaModo = null;             // ruta más corta: { fase, origen, destino, camino, aristas }          // todos los actos; los indicadores se comparan con las Bases solas (k = 0)
 let escala = 1, sel = -1, hover = -1, resalte = null, historia = [], etiquetas = true, capResaltado = -1;
 let sucio = true;
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 let paleta = {};
 function leerPaleta() {
-  paleta = { bg: css("--bg"), linea: css("--line"), ink: css("--ink"), ink2: css("--ink-2"), muted: css("--muted"), halo: css("--halo"),
+  paleta = { bg: css("--bg"), linea: css("--line"), jerarquia: css("--edge-h"), ink: css("--ink"), ink2: css("--ink-2"), muted: css("--muted"), halo: css("--halo"),
     neutral: css("--neutral"), act: css("--act"), focus: css("--focus"), nuevo: css("--nuevo"), c: [1,2,3,4,5,6,7,8].map(k => css("--c" + k)) };
   for (const k in ARISTAS) paleta[k] = css(ARISTAS[k].c);
   sucio = true;
@@ -340,7 +366,7 @@ const aPantalla = (x, y) => [x * escala * vista.s + vista.x, y * escala * vista.
 const aMundo = (px, py) => [(px - vista.x) / (escala * vista.s), (py - vista.y) / (escala * vista.s)];
 const rPantalla = i => radio[i] * Math.min(3.2, Math.max(.75, Math.sqrt(vista.s)));
 const existe = i => N[i].o <= hastaK && (N[i].h === undefined || N[i].h > hastaK);
-const nodoVisible = i => visibleTipo[N[i].k] && existe(i);
+const nodoVisible = i => visibleTipo[N[i].k] && existe(i) && (!arbol || !arbol.sub || arbol.sub.has(i));
 const aristaVisible = k => visibleArista[E[k][2]] && E[k][4] <= hastaK && nodoVisible(E[k][0]) && nodoVisible(E[k][1]);
 
 function encuadrar(indices) {
@@ -375,7 +401,19 @@ function dibujar() {
     }
     ctx.strokeStyle = paleta.linea; ctx.lineWidth = 1; ctx.setLineDash([]); ctx.stroke();
   }
-  const islas2 = !foco && auto && auto.grupos;   // con islas, las aristas entre grupos distintos se atenúan
+  if (arbol && arbol.virtuales) {              // anillos de profundidad y ramas hacia la raíz y los grupos
+    const [cx, cy] = aPantalla(arbol.cx, arbol.cy);
+    ctx.beginPath();
+    for (const rr of arbol.radios) { const r = rr * escala * vista.s; ctx.moveTo(cx + r, cy); ctx.arc(cx, cy, r, 0, Math.PI * 2); }
+    ctx.strokeStyle = paleta.linea; ctx.lineWidth = .8; ctx.setLineDash([2, 4]); ctx.stroke(); ctx.setLineDash([]);
+    ctx.beginPath();
+    for (const [x1, y1, x2, y2] of arbol.aristasV) {
+      const p = aPantalla(x1, y1), q = aPantalla(x2, y2);
+      ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]);
+    }
+    ctx.globalAlpha = foco ? .15 : .6; ctx.strokeStyle = paleta.jerarquia; ctx.lineWidth = 1; ctx.stroke(); ctx.globalAlpha = 1;
+  }
+  const islas2 = !foco && auto && auto.grupos && !arbol;   // con islas, las aristas entre grupos distintos se atenúan
   // aristas
   for (const tipo of ORDEN_ARISTAS) {
     if (!visibleArista[tipo]) continue;
@@ -394,7 +432,7 @@ function dibujar() {
         ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]); hay = true;
       }
       if (!hay) continue;
-      ctx.globalAlpha = (foco || islas2) && pasada === 0 ? (islas2 ? .05 : .07) : 1;
+      ctx.globalAlpha = ((foco || islas2) && pasada === 0 ? (islas2 ? .05 : .07) : 1) * (arbol && !foco && tipo !== "jerarquia" ? .25 : 1);
       ctx.strokeStyle = paleta[tipo];
       ctx.lineWidth = a.w * (foco && pasada === 1 ? 1.6 : 1) * Math.min(1.8, Math.max(.7, Math.sqrt(vista.s) * .8));
       ctx.setLineDash(a.d);
@@ -416,6 +454,38 @@ function dibujar() {
     }
   }
   ctx.globalAlpha = 1;
+  if (arbol && arbol.virtuales) {
+    const ocupado = [];
+    for (const v of arbol.virtuales) {
+      const [x, y] = aPantalla(v.x, v.y), r = v.raiz ? 8 : 6;
+      ctx.beginPath(); trazarForma(ctx, "romb", x, y, r);
+      ctx.fillStyle = v.color || paleta.ink; ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = paleta.halo; ctx.stroke();
+      if (!etiquetas) continue;
+      ctx.font = "700 12px Archivo, Helvetica, Arial, sans-serif";
+      const t = v.t.length > 34 ? v.t.slice(0, 33) + "…" : v.t, w = ctx.measureText(t).width, ly = y - r - 9;
+      if (ocupado.some(o => Math.abs(o[1] - ly) < 14 && Math.abs(o[0] - x) < (o[2] + w) / 2 + 4)) continue;
+      ocupado.push([x, ly, w]);
+      texto(t, x, ly, { align: "center", font: "700 12px Archivo, Helvetica, Arial, sans-serif" });
+    }
+  }
+  if (rutaModo && rutaModo.camino) {           // la ruta: tramos gruesos y números de paso
+    ctx.beginPath();
+    for (let k = 1; k < rutaModo.camino.length; k++) {
+      const p = pos[rutaModo.camino[k - 1]], q = pos[rutaModo.camino[k]];
+      ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]);
+    }
+    ctx.lineWidth = 4; ctx.strokeStyle = paleta.focus; ctx.globalAlpha = .85; ctx.stroke(); ctx.globalAlpha = 1;
+    rutaModo.camino.forEach((i, k) => {
+      const [x, y] = pos[i];
+      ctx.beginPath(); ctx.arc(x, y, 9, 0, Math.PI * 2); ctx.fillStyle = paleta.focus; ctx.fill();
+      ctx.font = "700 10px Archivo, Helvetica, Arial, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillStyle = paleta.halo; ctx.fillText(String(k + 1), x, y + .5);
+    });
+  }
+  if (rutaModo && !rutaModo.camino && rutaModo.origen >= 0 && nodoVisible(rutaModo.origen)) {
+    const [x, y] = pos[rutaModo.origen];
+    ctx.beginPath(); ctx.arc(x, y, rPantalla(rutaModo.origen) + 6, 0, Math.PI * 2); ctx.lineWidth = 3; ctx.strokeStyle = paleta.focus; ctx.stroke();
+  }
   if (sel >= 0 && nodoVisible(sel)) {
     const [x, y] = pos[sel], r = rPantalla(sel) + 4;
     ctx.beginPath(); trazarForma(ctx, forma(N[sel]), x, y, r);
@@ -427,7 +497,8 @@ function dibujar() {
     ctx.lineWidth = 1.5; ctx.strokeStyle = paleta.ink; ctx.stroke();
   }
   if (etiquetas) {
-    if (auto && !foco && vista.s < 3) etiquetasIslas(pos);
+    if (arbol && !foco && vista.s < 2.5) etiquetasArbol(pos);
+    else if (auto && !arbol && !foco && vista.s < 3) etiquetasIslas(pos);
     else if (vista.s < 1.8 && !foco) etiquetasAnillo(pos); else etiquetasNodos(pos, foco);
   }
 }
@@ -442,6 +513,19 @@ const capCorto = c => {
   const s = t.charAt(0) + t.slice(1).toLowerCase();
   return `${c.n} ${s.length > 30 ? s.slice(0, 29).trimEnd() + "…" : s}`;
 };
+function etiquetasArbol(pos) {
+  // al alejarse, solo los dos primeros niveles del árbol (y los actos)
+  const usados = [];
+  N.forEach((n, i) => {
+    if (!nodoVisible(i)) return;
+    const d = arbol.nivel.get(i);
+    if (!(d <= 2 || n.k === "acto" || (d === 3 && vista.s > 1.3))) return;
+    const [x, y] = pos[i], t = n.l.length > 30 ? n.l.slice(0, 29) + "…" : n.l, w = t.length * 6.2;
+    if (usados.some(u => Math.abs(u[1] - y) < 13 && x < u[0] + u[2] && u[0] < x + w)) return;
+    usados.push([x + rPantalla(i) + 3, y, w]);
+    texto(t, x + rPantalla(i) + 3, y, { font: (d <= 1 ? "700 " : "500 ") + "11px Archivo, Helvetica, Arial, sans-serif" });
+  });
+}
 function etiquetasIslas(pos) {
   // una etiqueta sobre cada isla del agrupamiento automático
   for (const g of auto.grupos) {
@@ -601,7 +685,8 @@ function ficha() {
   if (auto && n.ga !== undefined) meta.push(["Grupo automático", esc(`G${n.ga + 1} · ${auto.grupos.find(g => g.k === n.ga)?.claves.slice(0, 3).join(", ") || ""}`)]);
   meta.push(["Conexiones", ady[sel].length]);
   let h = `<div class="nav">${historia.length ? '<button class="btn" type="button" id="b-atras">← Atrás</button>' : ""}
-    <button class="btn" type="button" id="b-ver">Centrar en el grafo</button><button class="btn" type="button" id="b-limpiar">Quitar selección</button></div>
+    <button class="btn" type="button" id="b-ver">Centrar en el grafo</button><button class="btn" type="button" id="b-limpiar">Quitar selección</button>
+    <button class="btn" type="button" id="b-ruta-aqui">Ruta desde aquí</button><button class="btn" type="button" id="b-raiz">Usar como raíz</button></div>
     <span class="tipo">${marca(sel)}${esc(tipo[0])}${n.aj ? " · publicación ajena" : ""}</span>
     <h2>${esc(n.t)}</h2><div class="num">${esc(n.i)}</div>
     ${n.r ? `<div class="ruta">${esc(n.r)}</div>` : ""}
@@ -647,6 +732,8 @@ function ficha() {
   $("b-ver").onclick = () => centrar(sel);
   if ($("b-leer")) $("b-leer").onclick = () => abrirLector(sel);
   $("b-ppr").onclick = () => segmentar(sel);
+  $("b-ruta-aqui").onclick = () => { const i = sel; if (rutaModo) salirRuta(); alternarRuta(i); };
+  $("b-raiz").onclick = () => alternarArbol(sel);
   $("b-limpiar").onclick = () => { historia = []; seleccionar(-1); };
   if ($("b-atras")) $("b-atras").onclick = () => { const i = historia.pop(); seleccionar(i, { atras: true }); centrar(i); };
 }
@@ -823,6 +910,7 @@ $("q").addEventListener("input", () => {
     : `<p class="vacio">Ningún nodo coincide con «${esc($("q").value)}».</p>`;
   caja.querySelectorAll(".item").forEach(b => b.addEventListener("click", () => {
     const i = +b.dataset.i; if (!visibleTipo[N[i].k]) { visibleTipo[N[i].k] = true; filtros(); }
+    if (rutaModo && rutaModo.fase !== "lista") { elegirEnRuta(i); caja.innerHTML = ""; $("q").value = ""; return; }
     seleccionar(i); centrar(i); caja.innerHTML = ""; $("q").value = "";
   }));
 });
@@ -848,7 +936,8 @@ function filtros() {
 }
 function refrescar() {
   if (sel >= 0) { resalte = vecinos(sel); ficha(); }
-  if (auto) agruparAuto();
+  if (auto) agruparAuto(); else if (arbol) disposicionActual();
+  if (rutaModo && rutaModo.fase === "lista") calcularRuta();
   sucio = true;
 }
 function leyenda() {
@@ -1054,32 +1143,206 @@ function mover(destino, alTerminar) {
   };
   requestAnimationFrame(paso);
 }
+function guardarOriginal() { if (!posOriginal) posOriginal = N.map(n => [n.x, n.y]); }
+function disposicionActual() {
+  if (!posOriginal) return;
+  let destino;
+  if (arbol) destino = arbolRadial();
+  else if (auto && auto.grupos) destino = islas(auto.grupos, posOriginal);
+  else destino = new Map(posOriginal.map((p, i) => [i, p]));
+  const volver = !arbol && !auto;
+  mover(destino, () => { encuadrar(todos()); if (volver) posOriginal = null; });
+  sucio = true;
+}
 function agruparAuto() {
   const r = calcularAuto();
-  auto = { ...r, orig: auto.orig, modoPrevio: auto.modoPrevio };
+  auto = { ...r, modoPrevio: auto.modoPrevio };
   $("v-detalle").textContent = nfmt(r.gamma, 1);
-  const destino = islas(auto.grupos, auto.orig);
-  mover(destino, () => encuadrar(todos()));
   if (pestana === "grp") panelGrupos();
   if (sel >= 0) ficha();
-  sucio = true;
+  disposicionActual();
 }
 function alternarAuto() {
   if (!auto) {
-    auto = { orig: N.map(n => [n.x, n.y]), modoPrevio: modoColor };
+    guardarOriginal();
+    auto = { modoPrevio: modoColor };
     modo("auto");
     $("b-auto").setAttribute("aria-pressed", "true"); $("caja-detalle").hidden = false;
     resalte = sel >= 0 ? vecinos(sel) : null; grpResaltado = -1;
     agruparAuto();
   } else {
-    const orig = auto.orig, previo = auto.modoPrevio;
+    const previo = auto.modoPrevio;
     auto = null; N.forEach(n => { delete n.ga; });
     modo(previo === "auto" ? "capitulo" : previo);
     $("b-auto").setAttribute("aria-pressed", "false"); $("caja-detalle").hidden = true;
-    mover(new Map(orig.map((p, i) => [i, p])), () => encuadrar(todos()));
+    if (arbol && arbol.porGrupos) ramas(false); else disposicionActual();
     if (pestana === "grp") panelGrupos();
     if (sel >= 0) ficha();
   }
+}
+
+// ---------- vista de árbol radial ----------
+const numeros = i => (N[i].l.match(/\d+/g) || []).map(Number);
+function compararNum(a, b) {
+  const x = numeros(a), y = numeros(b);
+  if (!x.length || !y.length) return (y.length - x.length) || a - b;
+  for (let k = 0; k < Math.min(x.length, y.length); k++) if (x[k] !== y[k]) return x[k] - y[k];
+  return x.length - y.length || a - b;
+}
+function padreArbol(i, base) {
+  let p = padreDe[i];
+  if (p < 0 && N[i].k === "acto") p = idxNodo.get((ACTOS[N[i].a] || {}).d) ?? -1;
+  if (p < 0 && N[i].k === "fragmento" && N[i].a !== undefined) p = nodoActo[N[i].a] ?? -1;
+  let vueltas = 0;
+  while (p >= 0 && !base(p) && vueltas++ < 30) p = padreDe[p] >= 0 ? padreDe[p] : (N[p].k === "acto" ? (idxNodo.get((ACTOS[N[p].a] || {}).d) ?? -1) : -1);
+  return p;
+}
+function arbolRadial() {
+  const base = i => visibleTipo[N[i].k] && existe(i);
+  const porGrupos = arbol.porGrupos && auto && auto.grupos;
+  const hijos = new Map(), etiq = new Map();            // claves: índice de nodo, "R" (raíz) o "G<k>" (grupo)
+  const agregar = (p, h) => { if (!hijos.has(p)) hijos.set(p, []); hijos.get(p).push(h); };
+  const gDe = i => N[i].ga !== undefined ? N[i].ga : -1;
+  if (porGrupos) auto.grupos.forEach(g => { agregar("R", "G" + g.k); etiq.set("G" + g.k, g.k >= 0 ? `G${g.k + 1} · ${g.claves.slice(0, 3).join(", ")}` : "Sueltos"); });
+  for (let i = 0; i < N.length; i++) {
+    if (!base(i)) continue;
+    let p = padreArbol(i, base);
+    if (porGrupos) {
+      if (p < 0 || gDe(p) !== gDe(i)) p = "G" + gDe(i);
+      if (typeof p === "string" && !etiq.has(p)) { agregar("R", p); etiq.set(p, "Sueltos"); }
+    }
+    else if (p < 0) p = "R";
+    agregar(p, i);
+  }
+  let raiz = "R";
+  arbol.sub = null;
+  if (arbol.raizSub >= 0 && base(arbol.raizSub)) {
+    raiz = arbol.raizSub;
+    const sub = new Set([raiz]), pila = [raiz];
+    while (pila.length) for (const h of hijos.get(pila.pop()) || []) if (typeof h === "number") { sub.add(h); pila.push(h); }
+    arbol.sub = sub;
+  }
+  // hojas por subárbol (para el ángulo) y profundidad
+  const hojas = new Map(), nivel = new Map();
+  const contar = (x, d) => {
+    nivel.set(x, d);
+    const hs = hijos.get(x) || [];
+    let t = 0; for (const h of hs) t += contar(h, d + 1);
+    t = Math.max(1, t); hojas.set(x, t); return t;
+  };
+  contar(raiz, 0);
+  for (const [, hs] of hijos) hs.sort((a, b) => typeof a === "string" ? (hojas.get(b) || 0) - (hojas.get(a) || 0) || a.localeCompare(b) : compararNum(a, b));
+  let prof = 0; nivel.forEach(d => { prof = Math.max(prof, d); });
+  const r1 = porGrupos ? .32 : .2, paso = (1 - r1) / Math.max(1, prof - 1), destino = new Map(), virtuales = [], aristasV = [], posV = new Map();
+  const radio = d => d === 0 ? 0 : r1 + (d - 1) * paso;
+  const ubicar = (x, a0, a1, d) => {
+    const a = (a0 + a1) / 2, r = radio(d), px = Math.cos(a) * r, py = Math.sin(a) * r;
+    if (typeof x === "number") destino.set(x, [px, py]); else posV.set(x, [px, py]);
+    let ini = a0;
+    for (const h of hijos.get(x) || []) {
+      const span = (a1 - a0) * hojas.get(h) / hojas.get(x);
+      const [hx, hy] = ubicar(h, ini, ini + span, d + 1);
+      if (typeof x === "string") aristasV.push([px, py, hx, hy]);
+      ini += span;
+    }
+    return [px, py];
+  };
+  ubicar(raiz, -Math.PI / 2, Math.PI * 1.5, 0);
+  posV.forEach(([x, y], k) => virtuales.push({ x, y, raiz: k === "R", t: k === "R" ? "Contrato" : etiq.get(k),
+    color: k === "R" ? null : colorGrupo(+k.slice(1) >= 0 ? +k.slice(1) : undefined), g: k === "R" ? null : +k.slice(1) }));
+  // los nodos fuera del subárbol quedan donde están (ocultos)
+  for (let i = 0; i < N.length; i++) if (!destino.has(i)) destino.set(i, [N[i].x, N[i].y]);
+  Object.assign(arbol, { virtuales, aristasV, nivel, prof, radios: Array.from({ length: prof }, (_, d) => radio(d + 1)), cx: 0, cy: 0 });
+  return destino;
+}
+function alternarArbol(raizSub = -1) {
+  if (!arbol) {
+    guardarOriginal();
+    arbol = { porGrupos: false, raizSub };
+    $("b-arbol").setAttribute("aria-pressed", "true"); $("caja-ramas").hidden = false;
+  } else if (raizSub >= 0) {
+    arbol.raizSub = raizSub;
+  } else {
+    arbol = null;
+    $("b-arbol").setAttribute("aria-pressed", "false"); $("caja-ramas").hidden = true;
+  }
+  $("b-completo").hidden = !(arbol && arbol.raizSub >= 0);
+  disposicionActual();
+  if (sel >= 0) ficha();
+}
+function ramas(porGrupos) {
+  if (!arbol) return;
+  arbol.porGrupos = porGrupos;
+  $("r-jer").setAttribute("aria-pressed", String(!porGrupos)); $("r-grp").setAttribute("aria-pressed", String(porGrupos));
+  if (porGrupos && !auto) { alternarAuto(); return; }      // calcula los grupos y vuelve a disponer
+  disposicionActual();
+}
+function grupoVirtualEn(px, py) {
+  if (!arbol || !arbol.virtuales) return null;
+  for (const v of arbol.virtuales) { const [x, y] = aPantalla(v.x, v.y); if (Math.hypot(x - px, y - py) < 10) return v; }
+  return null;
+}
+
+// ---------- ruta más corta ----------
+function textoFranja() {
+  $("franja").hidden = !rutaModo || rutaModo.fase === "lista";
+  if (!rutaModo) return;
+  $("franja-txt").textContent = rutaModo.fase === "origen" ? "Ruta más corta: haz clic en el nodo de origen (o búscalo)"
+    : `Origen: ${N[rutaModo.origen].l} · ahora haz clic en el destino (o búscalo)`;
+}
+function alternarRuta(origen = -1) {
+  if (rutaModo && origen < 0) { salirRuta(); return; }
+  rutaModo = { fase: origen >= 0 ? "destino" : "origen", origen, destino: -1, camino: null };
+  $("b-ruta").setAttribute("aria-pressed", "true"); $("ruta-panel").innerHTML = "";
+  textoFranja(); mostrarPestana("ficha"); sucio = true;
+}
+function salirRuta() {
+  rutaModo = null; $("b-ruta").setAttribute("aria-pressed", "false"); $("ruta-panel").innerHTML = ""; textoFranja();
+  if (resalte && sel < 0) resalte = null;
+  sucio = true;
+}
+function elegirEnRuta(i) {
+  if (rutaModo.fase === "origen") { rutaModo.origen = i; rutaModo.fase = "destino"; textoFranja(); sucio = true; return; }
+  rutaModo.destino = i; calcularRuta();
+}
+function calcularRuta() {
+  const { origen, destino } = rutaModo, evitar = $("c-evitar").checked;
+  const previo = new Map([[origen, null]]), cola = [origen];
+  for (let q = 0; q < cola.length && !previo.has(destino); q++) {
+    const u = cola[q];
+    for (const k of ady[u]) {
+      if (!aristaVisible(k) || (evitar && E[k][2] === "jerarquia")) continue;
+      const v = E[k][0] === u ? E[k][1] : E[k][0];
+      if (!previo.has(v)) { previo.set(v, [u, k]); cola.push(v); }
+    }
+  }
+  rutaModo.fase = "lista"; textoFranja();
+  if (!previo.has(destino)) { rutaModo.camino = null; resalte = new Set([origen, destino]); panelRuta(); sucio = true; return; }
+  const camino = [destino], aristas = [];
+  for (let x = destino; previo.get(x); x = previo.get(x)[0]) { aristas.unshift(previo.get(x)[1]); camino.unshift(previo.get(x)[0]); }
+  Object.assign(rutaModo, { camino, aristas });
+  sel = -1; resalte = new Set(camino); ficha(); encuadrar(camino); panelRuta(); sucio = true;
+}
+function panelRuta() {
+  const r = rutaModo, ev = $("c-evitar").checked;
+  let h = `<section class="ruta"><h3>Ruta más corta${r.camino ? ` · ${r.camino.length - 1} paso${r.camino.length === 2 ? "" : "s"}` : ""}</h3>
+    <p class="expl">De <b>${esc(N[r.origen].l)}</b> a <b>${esc(N[r.destino].l)}</b>, con las relaciones visibles en Filtros${ev ? ", sin jerarquía" : ""}.</p>`;
+  if (!r.camino) h += `<p class="vacio">No hay camino con las relaciones visibles. Enciende más tipos en Filtros${ev ? " o permite la jerarquía" : ""}.</p>`;
+  else h += r.camino.map((i, k) => {
+    let rel = "";
+    if (k < r.aristas.length) {
+      const e = E[r.aristas[k]], a = ARISTAS[e[2]], sale = e[0] === i;
+      rel = `<span class="rel">${esc(e[2] === "similitud" ? a.sale : (sale ? a.sale : a.entra))}${e[3] ? " · " + esc(OPS[e[3]] || e[3]) : ""}</span>`;
+    }
+    return `<div class="paso-ruta"><span class="nro">${k + 1}</span><button class="item" type="button" data-i="${i}">${marca(i)}<span class="l"><b>${esc(N[i].l)}</b>${esc(N[i].t === N[i].l ? "" : N[i].t)}</span><span class="etq">${esc((TIPOS[N[i].k] || [""])[0])}</span></button>${rel}</div>`;
+  }).join("");
+  h += `<div class="nav" style="margin-top:10px"><label class="chk" style="grid-template-columns:auto 1fr"><input type="checkbox" id="c-evitar2" ${ev ? "checked" : ""}><span>Evitar jerarquía</span></label>
+    <button class="btn" type="button" id="b-otra">Otra ruta</button><button class="btn" type="button" id="b-salir-ruta">Salir</button></div></section>`;
+  $("ruta-panel").innerHTML = h;
+  $("ruta-panel").querySelectorAll(".item").forEach(b => b.addEventListener("click", () => { const i = +b.dataset.i; centrar(i); }));
+  $("c-evitar2").onchange = ev2 => { $("c-evitar").checked = ev2.target.checked; calcularRuta(); };
+  $("b-otra").onclick = () => { rutaModo = { fase: "origen", origen: -1, destino: -1, camino: null }; $("ruta-panel").innerHTML = ""; resalte = null; textoFranja(); sucio = true; };
+  $("b-salir-ruta").onclick = salirRuta;
 }
 function seccionAuto() {
   if (!auto || !auto.grupos) return `<section class="indicador"><h3>Agrupación automática</h3><p class="expl">Separa el grafo en islas, una por grupo, con las relaciones encendidas en Filtros (Louvain). El control «Detalle» da menos o más grupos.</p>
@@ -1131,6 +1394,12 @@ function panelGrupos() {
 }
 $("b-encuadrar").onclick = () => encuadrar(todos());
 $("b-auto").onclick = () => alternarAuto();
+$("b-arbol").onclick = () => alternarArbol();
+$("b-completo").onclick = () => { arbol.raizSub = -1; $("b-completo").hidden = true; disposicionActual(); };
+$("r-jer").onclick = () => ramas(false);
+$("r-grp").onclick = () => ramas(true);
+$("b-ruta").onclick = () => alternarRuta();
+$("b-ruta-cancelar").onclick = salirRuta;
 $("r-detalle").addEventListener("input", () => { $("v-detalle").textContent = nfmt(+$("r-detalle").value, 1); });
 $("r-detalle").addEventListener("change", () => { if (auto) agruparAuto(); });
 $("b-centrar").onclick = () => centrar(sel);
@@ -1301,7 +1570,10 @@ function soltar(ev) {
   if (punteros.size < 2) pellizco = null;
   if (arrastre && !movido) {
     const i = nodoEn(ev.offsetX, ev.offsetY);
-    if (i >= 0) seleccionar(i);
+    const v = i < 0 ? grupoVirtualEn(ev.offsetX, ev.offsetY) : null;
+    if (i >= 0 && rutaModo && rutaModo.fase !== "lista") elegirEnRuta(i);
+    else if (i >= 0) seleccionar(i);
+    else if (v && v.g !== null && auto) { const g = auto.grupos.find(x => x.k === v.g); sel = -1; ficha(); resalte = new Set(g.miembros.filter(nodoVisible)); encuadrar([...resalte]); sucio = true; }
     else if (sel >= 0 || resalte) { sel = -1; resalte = null; capResaltado = -1; marcarLeyenda(); $("f-acto").value = ""; ficha(); sucio = true; }
   }
   arrastre = null; cv.classList.remove("arrastra");
@@ -1342,7 +1614,8 @@ matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { le
 const mo = new MutationObserver(() => { leerPaleta(); filtros(); leyenda(); ficha(); });
 mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 senal.addEventListener("abort", () => { ro.disconnect(); mo.disconnect(); document.body.classList.remove("con-lector"); });
-if (document.fonts) document.fonts.ready.then(() => { if (!senal.aborted) sucio = true; });
+if (document.fonts) Promise.all(["500 11px", "600 11px", "700 11px", "700 10px", "500 12px", "600 12px", "700 12px"]
+  .map(f => document.fonts.load(f + " Archivo").catch(() => null))).then(() => { if (!senal.aborted) sucio = true; });   // todos los grosores que usa el lienzo
 requestAnimationFrame(bucle);
 }
 
