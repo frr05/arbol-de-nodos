@@ -140,6 +140,10 @@ select { width: 100%; font: 13px var(--f-ui); color: var(--ink); background: var
 .claves { display: flex; flex-wrap: wrap; gap: 4px; grid-column: 2 / 4; }
 .fila .marca { justify-self: end; }
 .ppr { margin-top: 10px; }
+.detalle { display: inline-flex; align-items: center; gap: 6px; font: 500 12px var(--f-ui); color: var(--ink); background: var(--panel);
+  border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; }
+.detalle input { width: 110px; accent-color: var(--ink); }
+.detalle span { font-variant-numeric: tabular-nums; min-width: 2.2em; }
 .nota { font-size: 12px; color: var(--muted); line-height: 1.5; margin-top: 18px; }
 @media (max-width: 760px) {
   body { overflow: auto; }
@@ -208,6 +212,8 @@ body.con-lector { overflow: hidden; }
       <span class="segmento" role="group" aria-label="Color de los nodos">
         <button id="c-cap" type="button" class="btn" aria-pressed="true">Color por capítulo</button><button id="c-grp" type="button" class="btn" aria-pressed="false">por grupo</button>
       </span>
+      <button id="b-auto" type="button" class="btn" aria-pressed="false">Agrupar automáticamente</button>
+      <label class="detalle" id="caja-detalle" hidden>Detalle <input id="r-detalle" type="range" min="0.5" max="3" step="0.1" value="1" aria-label="Detalle del agrupamiento: más alto, más grupos"><span id="v-detalle">1,0</span></label>
     </div>
     <div class="punta" id="punta" hidden></div>
   </div>
@@ -317,14 +323,14 @@ let sucio = true;
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 let paleta = {};
 function leerPaleta() {
-  paleta = { bg: css("--bg"), ink: css("--ink"), ink2: css("--ink-2"), muted: css("--muted"), halo: css("--halo"),
+  paleta = { bg: css("--bg"), linea: css("--line"), ink: css("--ink"), ink2: css("--ink-2"), muted: css("--muted"), halo: css("--halo"),
     neutral: css("--neutral"), act: css("--act"), focus: css("--focus"), nuevo: css("--nuevo"), c: [1,2,3,4,5,6,7,8].map(k => css("--c" + k)) };
   for (const k in ARISTAS) paleta[k] = css(ARISTAS[k].c);
   sucio = true;
 }
 let modoColor = "capitulo";
 const COMS = D.comunidades || [];
-const grupoDe = n => modoColor === "grupo" ? n.cm : n.g;
+const grupoDe = n => modoColor === "auto" ? n.ga : modoColor === "grupo" ? n.cm : n.g;
 const colorGrupo = g => g !== undefined && g < COLORES ? paleta.c[g] : paleta.neutral;
 const colorNodo = n => n.k === "documento" || n.k === "acto" ? paleta.act : colorGrupo(grupoDe(n));
 const nombreGrupo = k => `Grupo ${k + 1} · ${(COMS[k].claves || []).slice(0, 3).join(", ")}`;
@@ -369,24 +375,34 @@ function dibujar() {
   ctx.fillStyle = paleta.bg; ctx.fillRect(0, 0, W, H);
   const foco = resalte;                       // Set de nodos destacados (selección, acto o capítulo) o null
   const pos = N.map(n => aPantalla(n.x, n.y));
+  if (auto && auto.grupos) {                   // contorno tenue de cada isla
+    ctx.beginPath();
+    for (const g of auto.grupos) if (g.r) {
+      const [x, y] = aPantalla(g.cx, g.cy), r = g.r * escala * vista.s;
+      ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, Math.PI * 2);
+    }
+    ctx.strokeStyle = paleta.linea; ctx.lineWidth = 1; ctx.setLineDash([]); ctx.stroke();
+  }
+  const islas2 = !foco && auto && auto.grupos;   // con islas, las aristas entre grupos distintos se atenúan
   // aristas
   for (const tipo of ORDEN_ARISTAS) {
     if (!visibleArista[tipo]) continue;
     const a = ARISTAS[tipo];
-    for (const pasada of foco ? [0, 1] : [1]) {
+    for (const pasada of foco || islas2 ? [0, 1] : [1]) {
       ctx.beginPath();
       let hay = false;
       for (let k = 0; k < E.length; k++) {
         const e = E[k];
         if (e[2] !== tipo || e[4] > hastaK || !nodoVisible(e[0]) || !nodoVisible(e[1])) continue;
-        const dentro = !foco || (sel >= 0 ? (e[0] === sel || e[1] === sel) : (foco.has(e[0]) && foco.has(e[1])));
-        if ((pasada === 1) !== dentro && foco) continue;
+        const dentro = islas2 ? (N[e[0]].ga !== undefined && N[e[0]].ga === N[e[1]].ga)
+          : !foco || (sel >= 0 ? (e[0] === sel || e[1] === sel) : (foco.has(e[0]) && foco.has(e[1])));
+        if ((pasada === 1) !== dentro && (foco || islas2)) continue;
         const p = pos[e[0]], q = pos[e[1]];
         if ((p[0] < -50 && q[0] < -50) || (p[0] > W + 50 && q[0] > W + 50) || (p[1] < -50 && q[1] < -50) || (p[1] > H + 50 && q[1] > H + 50)) continue;
         ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]); hay = true;
       }
       if (!hay) continue;
-      ctx.globalAlpha = foco && pasada === 0 ? .07 : 1;
+      ctx.globalAlpha = (foco || islas2) && pasada === 0 ? (islas2 ? .05 : .07) : 1;
       ctx.strokeStyle = paleta[tipo];
       ctx.lineWidth = a.w * (foco && pasada === 1 ? 1.6 : 1) * Math.min(1.8, Math.max(.7, Math.sqrt(vista.s) * .8));
       ctx.setLineDash(a.d);
@@ -418,7 +434,10 @@ function dibujar() {
     ctx.beginPath(); trazarForma(ctx, forma(N[hover]), x, y, r);
     ctx.lineWidth = 1.5; ctx.strokeStyle = paleta.ink; ctx.stroke();
   }
-  if (etiquetas) { if (vista.s < 1.8 && !foco) etiquetasAnillo(pos); else etiquetasNodos(pos, foco); }
+  if (etiquetas) {
+    if (auto && !foco && vista.s < 3) etiquetasIslas(pos);
+    else if (vista.s < 1.8 && !foco) etiquetasAnillo(pos); else etiquetasNodos(pos, foco);
+  }
 }
 function texto(t, x, y, opciones = {}) {
   ctx.font = opciones.font || "500 12px Archivo, Helvetica, Arial, sans-serif";
@@ -431,6 +450,18 @@ const capCorto = c => {
   const s = t.charAt(0) + t.slice(1).toLowerCase();
   return `${c.n} ${s.length > 30 ? s.slice(0, 29).trimEnd() + "…" : s}`;
 };
+function etiquetasIslas(pos) {
+  // una etiqueta sobre cada isla del agrupamiento automático
+  for (const g of auto.grupos) {
+    const vis = g.miembros.filter(nodoVisible);
+    if (vis.length < 3) continue;
+    let x = 0, y = Infinity;
+    vis.forEach(i => { x += pos[i][0]; y = Math.min(y, pos[i][1]); });
+    x /= vis.length;
+    const t = g.k < 0 ? `Sueltos · ${vis.length}` : `G${g.k + 1} · ${vis.length} · ${g.claves.slice(0, 3).join(", ")}`;
+    texto(t, x, Math.max(12, y - 12), { align: "center", font: "600 12px Archivo, Helvetica, Arial, sans-serif" });
+  }
+}
 function etiquetasAnillo(pos) {
   // etiquetas de capítulo alrededor del grafo, unidas al centro de su grupo (como los sectores del Product Space)
   const vis = todos();
@@ -575,6 +606,7 @@ function ficha() {
   if (n.pg) meta.push(["Páginas", n.pg[0] === n.pg[1] ? n.pg[0] : `${n.pg[0]}–${n.pg[1]}`]);
   if (n.g !== undefined) meta.push(["Capítulo", esc(capCorto(CAPS[n.g]))]);
   if (n.cm !== undefined) meta.push(["Grupo", esc(nombreGrupo(n.cm))]);
+  if (auto && n.ga !== undefined) meta.push(["Grupo automático", esc(`G${n.ga + 1} · ${auto.grupos.find(g => g.k === n.ga)?.claves.slice(0, 3).join(", ") || ""}`)]);
   meta.push(["Conexiones", ady[sel].length]);
   let h = `<div class="nav">${historia.length ? '<button class="btn" type="button" id="b-atras">← Atrás</button>' : ""}
     <button class="btn" type="button" id="b-ver">Centrar en el grafo</button><button class="btn" type="button" id="b-limpiar">Quitar selección</button></div>
@@ -824,6 +856,7 @@ function filtros() {
 }
 function refrescar() {
   if (sel >= 0) { resalte = vecinos(sel); ficha(); }
+  if (auto) agruparAuto();
   sucio = true;
 }
 function leyenda() {
@@ -871,6 +904,7 @@ $("t-grp").onclick = () => mostrarPestana("grp");
 function modo(m) {
   modoColor = m;
   $("c-cap").setAttribute("aria-pressed", String(m === "capitulo")); $("c-grp").setAttribute("aria-pressed", String(m === "grupo"));
+  if (pestana === "grp") panelGrupos();
   sucio = true;
 }
 $("c-cap").onclick = () => modo("capitulo");
@@ -898,11 +932,181 @@ function segmentar(semilla) {
   $("ppr").querySelectorAll(".fila").forEach(b => b.addEventListener("click", () => { const i = +b.dataset.i; seleccionar(i); centrar(i); }));
 }
 
+// ---------- agrupamiento automático (Louvain en el navegador) e islas ----------
+let auto = null;                                  // { grupos, Q, orig: [[x, y]…], modoPrevio }
+const PESO_AUTO = { modifica: 1.5, jerarquia: 1, ubica: 1, procedencia: .6, cita: .5, cita_acto: .5 };
+const VACIAS = new Set(("a al algo ante antes como con contra cual cuales cuando de del desde donde dos e el ella ellas ellos en entre era es esa ese eso esta este esto estos estas etc fue ha han hasta hay la las le les lo los mas mismo muy ni no nos o otra otro otros otras para pero por que quien se sea segun ser si sin sobre son su sus tal tambien tanto todo todos toda todas tras un una uno unos unas y ya dicha dicho dichos dichas cada caso casos forma presente deber debera deberan sera seran podra podran sido haber articulo articulos numeral numerales bases licitacion sociedad concesionaria concesion contrato ministerio obras publicas mop dgop direccion general inspector fiscal letra indicado indicada establecido segun respectivo respectiva correspondiente correspondientes conforme mediante dentro respecto parte partes senalado senalada siguiente siguientes anterior anteriores durante cualquier inciso circular aclaratoria decreto resolucion convenio complementario fragmento instruccion aclaracion formalidad tabla").split(" "));
+function louvain(n, aristas, gamma) {
+  // n nodos locales, aristas [a, b, w]; devuelve la comunidad de cada nodo (orden fijo: el resultado no varía)
+  let adj = Array.from({ length: n }, () => new Map()), lazo = new Float64Array(n);
+  for (const [a, b, w] of aristas) { if (a === b) { lazo[a] += w; continue; } adj[a].set(b, (adj[a].get(b) || 0) + w); adj[b].set(a, (adj[b].get(a) || 0) + w); }
+  let pertenece = Array.from({ length: n }, (_, i) => i);
+  for (let nivel = 0; nivel < 20; nivel++) {
+    const M = adj.length, k = new Float64Array(M);
+    let m2 = 0;
+    for (let i = 0; i < M; i++) { let x = 2 * lazo[i]; adj[i].forEach(w => { x += w; }); k[i] = x; m2 += x; }
+    if (m2 === 0) break;
+    const com = Array.from({ length: M }, (_, i) => i), tot = Float64Array.from(k);
+    let movido = true, pasadas = 0, huboCambio = false;
+    while (movido && pasadas++ < 30) {
+      movido = false;
+      for (let i = 0; i < M; i++) {
+        const ci = com[i], pesos = new Map();
+        adj[i].forEach((w, j) => { pesos.set(com[j], (pesos.get(com[j]) || 0) + w); });
+        tot[ci] -= k[i];
+        let mejor = ci, ganancia = (pesos.get(ci) || 0) - gamma * tot[ci] * k[i] / m2;
+        for (const [c, w] of pesos) {
+          const g = w - gamma * tot[c] * k[i] / m2;
+          if (g > ganancia + 1e-12 || (Math.abs(g - ganancia) <= 1e-12 && c < mejor && g > 0)) { ganancia = g; mejor = c; }
+        }
+        tot[mejor] += k[i];
+        if (mejor !== ci) { com[i] = mejor; movido = true; huboCambio = true; }
+      }
+    }
+    const nuevo = new Map(); com.forEach(c => { if (!nuevo.has(c)) nuevo.set(c, nuevo.size); });
+    pertenece = pertenece.map(c => nuevo.get(com[c]));
+    if (!huboCambio || nuevo.size === M) break;
+    const adj2 = Array.from({ length: nuevo.size }, () => new Map()), lazo2 = new Float64Array(nuevo.size);
+    for (let i = 0; i < M; i++) {
+      const a = nuevo.get(com[i]); lazo2[a] += lazo[i];
+      adj[i].forEach((w, j) => { const b = nuevo.get(com[j]); if (a === b) { if (i < j) lazo2[a] += w; } else adj2[a].set(b, (adj2[a].get(b) || 0) + w); });
+    }
+    adj = adj2; lazo = lazo2;
+  }
+  return pertenece;
+}
+function modularidad(n, aristas, com) {
+  const k = new Float64Array(n), dentro = new Map(), tot = new Map(); let m2 = 0;
+  for (const [a, b, w] of aristas) { k[a] += w; k[b] += w; m2 += 2 * w; if (com[a] === com[b]) dentro.set(com[a], (dentro.get(com[a]) || 0) + 2 * w); }
+  for (let i = 0; i < n; i++) tot.set(com[i], (tot.get(com[i]) || 0) + k[i]);
+  let q = 0; tot.forEach((t, c) => { q += (dentro.get(c) || 0) / m2 - (t / m2) ** 2; });
+  return m2 ? q : 0;
+}
+function clavesDe(grupos) {
+  const tf = grupos.map(g => {
+    const c = new Map();
+    for (const i of g.miembros) for (const w of plano(N[i].t + " " + (N[i].tx || "").slice(0, 600)).match(/[a-zñ]{4,}/g) || [])
+      if (!VACIAS.has(w)) c.set(w, (c.get(w) || 0) + 1);
+    return c;
+  });
+  const df = new Map(); tf.forEach(c => c.forEach((_, w) => df.set(w, (df.get(w) || 0) + 1)));
+  return tf.map(c => { let t = 0; c.forEach(v => { t += v; });
+    return [...c].filter(([, v]) => v >= 2).map(([w, v]) => [w, v / (t || 1) * Math.log((1 + tf.length) / df.get(w))]).sort((a, b) => b[1] - a[1]).slice(0, 5).map(x => x[0]); });
+}
+function calcularAuto() {
+  const gamma = +$("r-detalle").value;
+  const vis = N.map((_, i) => i).filter(nodoVisible), loc = new Map(vis.map((i, k) => [i, k]));
+  const aristas = [];
+  E.forEach((e, k) => { if (aristaVisible(k)) aristas.push([loc.get(e[0]), loc.get(e[1]), e[2] === "similitud" ? (+e[3] || .5) : (PESO_AUTO[e[2]] || .5)]); });
+  const com = louvain(vis.length, aristas, gamma);
+  const Q = modularidad(vis.length, aristas, com);
+  const por = new Map(); com.forEach((c, k) => { if (!por.has(c)) por.set(c, []); por.get(c).push(vis[k]); });
+  let grupos = [...por.values()].filter(m => m.length >= 3).sort((a, b) => b.length - a.length || a[0] - b[0]).map((m, k) => ({ k, miembros: m }));
+  const sueltos = [...por.values()].filter(m => m.length < 3).flat();
+  const claves = clavesDe(grupos);
+  grupos.forEach((g, k) => {
+    g.claves = claves[k];
+    const tipos = new Map(), caps = new Map();
+    g.miembros.forEach(i => { tipos.set(N[i].k, (tipos.get(N[i].k) || 0) + 1); if (N[i].g !== undefined) caps.set(N[i].g, (caps.get(N[i].g) || 0) + 1); });
+    g.tipos = [...tipos].sort((a, b) => b[1] - a[1]).slice(0, 2);
+    g.caps = [...caps].sort((a, b) => b[1] - a[1]).slice(0, 3);
+  });
+  if (sueltos.length) grupos.push({ k: -1, miembros: sueltos, claves: [], tipos: [], caps: [] });
+  N.forEach(n => { delete n.ga; });
+  grupos.forEach(g => { if (g.k >= 0) g.miembros.forEach(i => { N[i].ga = g.k; }); });
+  return { grupos, Q, gamma };
+}
+function islas(grupos, orig) {
+  // empaquetado en espiral: cada grupo en un círculo de radio ∝ √tamaño, conservando la forma relativa de sus nodos
+  const total = grupos.reduce((a, g) => a + g.miembros.length, 0) || 1;
+  const c0 = Math.sqrt(2.4 / (Math.PI * total)), puestos = [], destino = new Map();
+  for (const g of grupos) {
+    const r = Math.max(.035, c0 * Math.sqrt(g.miembros.length)), sep = .025;
+    let x = 0, y = 0;
+    for (let t = 0; t < 4000; t++) {
+      const a = t * .35, d = .012 * t;
+      x = Math.cos(a) * d; y = Math.sin(a) * d;
+      if (puestos.every(q => Math.hypot(q.x - x, q.y - y) >= q.r + r + sep)) break;
+    }
+    puestos.push({ x, y, r });
+    let cx = 0, cy = 0;
+    g.miembros.forEach(i => { cx += orig[i][0]; cy += orig[i][1]; });
+    cx /= g.miembros.length; cy /= g.miembros.length;
+    const orden = g.miembros.map(i => [i, Math.hypot(orig[i][0] - cx, orig[i][1] - cy), Math.atan2(orig[i][1] - cy, orig[i][0] - cx)])
+      .sort((a, b) => a[1] - b[1] || a[0] - b[0]);
+    orden.forEach(([i, , ang], j) => {
+      const d = r * .9 * Math.sqrt((j + .5) / orden.length);
+      destino.set(i, [x + Math.cos(ang) * d, y + Math.sin(ang) * d]);
+    });
+    g.cx = x; g.cy = y; g.r = r;
+  }
+  // recentrar en el origen
+  let mx = 0, my = 0; destino.forEach(p => { mx += p[0]; my += p[1]; });
+  mx /= destino.size || 1; my /= destino.size || 1;
+  destino.forEach(p => { p[0] -= mx; p[1] -= my; });
+  grupos.forEach(g => { g.cx -= mx; g.cy -= my; });
+  return destino;
+}
+let animacion = 0;
+function mover(destino, alTerminar) {
+  const desde = N.map(n => [n.x, n.y]), id = ++animacion;
+  const fin = () => { destino.forEach((p, i) => { N[i].x = p[0]; N[i].y = p[1]; }); sucio = true; if (alTerminar) alTerminar(); };
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return fin();
+  const t0 = performance.now(), dur = 600;
+  const paso = ahora => {
+    if (senal.aborted || id !== animacion) return;
+    const u = Math.min(1, (ahora - t0) / dur), e = u < .5 ? 2 * u * u : 1 - (-2 * u + 2) ** 2 / 2;
+    destino.forEach((p, i) => { N[i].x = desde[i][0] + (p[0] - desde[i][0]) * e; N[i].y = desde[i][1] + (p[1] - desde[i][1]) * e; });
+    sucio = true;
+    if (u < 1) requestAnimationFrame(paso); else fin();
+  };
+  requestAnimationFrame(paso);
+}
+function agruparAuto() {
+  const r = calcularAuto();
+  auto = { ...r, orig: auto.orig, modoPrevio: auto.modoPrevio };
+  $("v-detalle").textContent = nfmt(r.gamma, 1);
+  const destino = islas(auto.grupos, auto.orig);
+  mover(destino, () => encuadrar(todos()));
+  if (pestana === "grp") panelGrupos();
+  if (sel >= 0) ficha();
+  sucio = true;
+}
+function alternarAuto() {
+  if (!auto) {
+    auto = { orig: N.map(n => [n.x, n.y]), modoPrevio: modoColor };
+    modo("auto");
+    $("b-auto").setAttribute("aria-pressed", "true"); $("caja-detalle").hidden = false;
+    resalte = sel >= 0 ? vecinos(sel) : null; grpResaltado = -1;
+    agruparAuto();
+  } else {
+    const orig = auto.orig, previo = auto.modoPrevio;
+    auto = null; N.forEach(n => { delete n.ga; });
+    modo(previo === "auto" ? "capitulo" : previo);
+    $("b-auto").setAttribute("aria-pressed", "false"); $("caja-detalle").hidden = true;
+    mover(new Map(orig.map((p, i) => [i, p])), () => encuadrar(todos()));
+    if (pestana === "grp") panelGrupos();
+    if (sel >= 0) ficha();
+  }
+}
+function seccionAuto() {
+  if (!auto || !auto.grupos) return `<section class="indicador"><h3>Agrupación automática</h3><p class="expl">Separa el grafo en islas, una por grupo, con las relaciones encendidas en Filtros (Louvain). El control «Detalle» da menos o más grupos.</p>
+    <button class="btn" type="button" id="b-auto2">Agrupar automáticamente</button></section>`;
+  const gs = auto.grupos, max = Math.max(...gs.map(g => g.miembros.length), 1);
+  return `<section class="indicador"><h3>Agrupación automática (${gs.filter(g => g.k >= 0).length} grupos)</h3>
+    <p class="expl">Modularidad ${nfmt(auto.Q, 2)} (0 = sin estructura; sobre 0,3, grupos claros). Calculada con los nodos y relaciones visibles y detalle ${nfmt(auto.gamma, 1)}. Clic en un grupo para resaltarlo.</p>` +
+    gs.map((g, k) => `<button class="fila" type="button" data-ga="${k}">
+      <span class="marca" style="background:${g.k >= 0 ? colorGrupo(g.k) : paleta.neutral}"></span><span class="nm"><b>${g.k >= 0 ? "G" + (g.k + 1) : "Sueltos"}</b>${esc(g.caps.map(([c]) => CAPS[c].n).join(" · "))}</span>
+      <span class="vl">${g.miembros.length}</span><span class="barra"><i style="width:${100 * g.miembros.length / max}%;background:${g.k >= 0 ? colorGrupo(g.k) : paleta.neutral}"></i></span>
+      ${g.claves.length ? `<span class="claves">${g.claves.map(w => `<span class="etq">${esc(w)}</span>`).join("")}</span>` : ""}
+      <span class="sub">${g.k >= 0 ? g.tipos.map(([t, c]) => `${c} ${esc(((TIPOS[t] || [t])[0]).toLowerCase())}`).join(" · ") : "nodos sin relaciones visibles o en grupos de menos de 3"}</span></button>`).join("") + `</section>`;
+}
+
 // ---------- grupos (comunidades) y pares parecidos ----------
 let grpResaltado = -1;
 function panelGrupos() {
   const max = Math.max(...COMS.map(c => c.arts.length), 1);
-  let h = `<p class="expl">Grupos de artículos que se citan entre sí o hablan de lo mismo (detección de comunidades Louvain sobre las citas y la similitud de contenido). Cada grupo lleva sus palabras más distintivas y sus capítulos. Clic en un grupo para resaltarlo; «por grupo», arriba del grafo, colorea los nodos con estos grupos.</p>
+  let h = seccionAuto() + `<p class="expl">Grupos de artículos que se citan entre sí o hablan de lo mismo (detección de comunidades Louvain sobre las citas y la similitud de contenido). Cada grupo lleva sus palabras más distintivas y sus capítulos. Clic en un grupo para resaltarlo; «por grupo», arriba del grafo, colorea los nodos con estos grupos.</p>
     <section class="indicador"><h3>Grupos (${COMS.length})</h3>` +
     COMS.map((c, k) => `<button class="fila" type="button" data-g="${k}" aria-pressed="${k === grpResaltado}">
       <span class="marca" style="background:${colorGrupo(k)}"></span><span class="nm"><b>Grupo ${k + 1}</b>${esc(c.caps.map(([g, n]) => CAPS[g].n).join(" · "))}</span>
@@ -915,6 +1119,12 @@ function panelGrupos() {
       <span class="nm"><b>${esc(N[a].l)}</b>↔ <b>${esc(N[b].l)}</b></span><span class="vl">${nfmt(v, 2)}</span>
       <span class="sub">${esc(N[a].t.replace(N[a].l, "").trim())} · ${esc(N[b].t.replace(N[b].l, "").trim())}</span></button>`).join("") + `</section>`;
   $("grupos").innerHTML = h;
+  $("grupos").querySelectorAll("[data-ga]").forEach(b => b.addEventListener("click", () => {
+    const g = auto.grupos[+b.dataset.ga];
+    sel = -1; ficha(); grpResaltado = -1; capResaltado = -1; marcarLeyenda();
+    resalte = new Set(g.miembros.filter(nodoVisible)); encuadrar([...resalte]); sucio = true;
+  }));
+  if ($("b-auto2")) $("b-auto2").onclick = () => alternarAuto();
   $("grupos").querySelectorAll("[data-g]").forEach(b => b.addEventListener("click", () => {
     const k = +b.dataset.g;
     sel = -1; ficha(); capResaltado = -1; marcarLeyenda();
@@ -928,6 +1138,9 @@ function panelGrupos() {
   }));
 }
 $("b-encuadrar").onclick = () => encuadrar(todos());
+$("b-auto").onclick = () => alternarAuto();
+$("r-detalle").addEventListener("input", () => { $("v-detalle").textContent = nfmt(+$("r-detalle").value, 1); });
+$("r-detalle").addEventListener("change", () => { if (auto) agruparAuto(); });
 $("b-centrar").onclick = () => centrar(sel);
 $("b-etiquetas").onclick = ev => { etiquetas = !etiquetas; ev.target.setAttribute("aria-pressed", String(etiquetas)); sucio = true; };
 

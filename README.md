@@ -94,6 +94,15 @@ La pestaña **Indicadores** resume la red con todos los actos y muestra entre pa
   - **Más parecidos por contenido:** los 8 artículos con mayor coseno bge-m3.
   - **Segmentar desde aquí:** PageRank personalizado sobre las relaciones visibles. Resalta los 40 nodos más ligados al nodo elegido y los ordena. Si apagas algunos tipos de relación en Filtros, la segmentación cambia.
 
+### Agrupar automáticamente
+
+El botón **«Agrupar automáticamente»**, sobre el grafo, calcula grupos en el navegador y separa el dibujo en **islas**, una por grupo, con un contorno y una etiqueta: «G3 · 191 · palabras clave».
+- **Algoritmo:** Louvain sobre los nodos y relaciones **visibles en Filtros**, con pesos por tipo de relación (modifica 1,5; jerarquía y ubica 1; procedencia 0,6; citas 0,5; similitud según su coseno). Al cambiar los filtros, el agrupamiento se recalcula; por ejemplo, con solo las citas encendidas agrupa por quién cita a quién.
+- **Detalle:** es la resolución de Louvain. Más alto, más grupos.
+- **Islas:** cada una es un disco de tamaño proporcional al grupo, y sus nodos conservan el ángulo que tenían. Las relaciones entre grupos distintos se atenúan, y los grupos de menos de 3 nodos quedan en «Sueltos».
+- **Pestaña Grupos:** muestra la modularidad (sobre 0,3, grupos claros) y cada grupo con sus palabras clave (tf-idf), sus capítulos y sus tipos de nodo.
+- Otro clic en el botón vuelve exactamente a la disposición original.
+
 La posición en el dibujo no es un indicador: el centro lo ocupan los nodos conectados con muchos grupos distintos (sobre todo las circulares), no necesariamente los más citados.
 
 `salida/grafo_RITP.graphml` contiene el mismo grafo para Gephi o yEd, con las posiciones calculadas y, en cada nodo y arista, el acto desde el que existe (`acto_origen`, `acto_desde`). `salida/resumen_RITP.md` tiene el conteo de nodos y relaciones por tipo.
