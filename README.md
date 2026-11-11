@@ -131,6 +131,16 @@ El botón **«Ruta más corta»**, o **«Ruta desde aquí»** en la ficha, encue
 - **Resultado:** el camino queda resaltado con números de paso, y en la pestaña Nodo se lista cada tramo con su relación en el sentido correcto. Por ejemplo: «1.9.3 —cita a→ 1.3.2 —mencionado por→ aclaración 2 —ubicado por→ Circular N°4».
 - Si no hay camino con las relaciones visibles, lo avisa.
 
+### Pestaña Aristas
+
+Lista las aristas como la ficha lista los nodos. Cada una lleva la cantidad de nodos que une:
+- **directos:** los nodos que la forman;
+- **con ramificaciones:** además, todo lo que cuelga de ellos en la jerarquía. Por ejemplo, si toca un artículo, cuentan también sus subartículos e incisos.
+
+Un clic resalta y encuadra ese conjunto en el grafo. Hay dos secciones:
+- **Conexiones entre grupos** (con el agrupamiento activo): siguen el segmentador «Más relevantes»; cada par muestra sus relaciones, sus nodos directos y los que suma con ramificaciones.
+- **Relaciones:** todas las relaciones visibles. Se filtran por numeral o título y por tipo, y se ordenan por cantidad de nodos con ramificaciones o por tipo. Se muestran de a 100.
+
 La posición en el dibujo no es un indicador: el centro lo ocupan los nodos conectados con muchos grupos distintos (sobre todo las circulares), no necesariamente los más citados.
 
 `salida/grafo_RITP.graphml` contiene el mismo grafo para Gephi o yEd, con las posiciones calculadas y, en cada nodo y arista, el acto desde el que existe (`acto_origen`, `acto_desde`). `salida/resumen_RITP.md` tiene el conteo de nodos y relaciones por tipo.

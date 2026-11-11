@@ -64,7 +64,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .punta span { color: var(--ink-2); display: block; }
 aside { border-left: 1px solid var(--line); background: var(--panel); min-height: 0; display: flex; flex-direction: column; }
 .pestanas { display: flex; border-bottom: 1px solid var(--line); }
-.pestanas button { flex: 1; font: 600 13px var(--f-ui); color: var(--ink-2); background: none; border: 0; padding: 10px; cursor: pointer;
+.pestanas button { flex: 1; font: 600 13px var(--f-ui); color: var(--ink-2); background: none; border: 0; padding: 10px 4px; cursor: pointer;
   border-bottom: 2px solid transparent; }
 .pestanas button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--ink); }
 .cuerpo { overflow-y: auto; padding: 14px 16px 24px; min-height: 0; flex: 1; }
@@ -265,6 +265,7 @@ body.con-lector { overflow: hidden; }
       <button id="t-ficha" role="tab" aria-selected="true" type="button">Nodo</button>
       <button id="t-ind" role="tab" aria-selected="false" type="button">Indicadores</button>
       <button id="t-grp" role="tab" aria-selected="false" type="button">Grupos</button>
+      <button id="t-ari" role="tab" aria-selected="false" type="button">Aristas</button>
       <button id="t-filtros" role="tab" aria-selected="false" type="button">Filtros</button>
     </div>
     <div class="cuerpo" id="p-ficha" role="tabpanel">
@@ -277,6 +278,17 @@ body.con-lector { overflow: hidden; }
     </div>
     <div class="cuerpo" id="p-ind" role="tabpanel" hidden><div id="indicadores"></div></div>
     <div class="cuerpo" id="p-grp" role="tabpanel" hidden><div id="grupos"></div></div>
+    <div class="cuerpo" id="p-ari" role="tabpanel" hidden>
+      <section class="indicador" id="ari-inter"></section>
+      <section class="indicador">
+        <h3 id="ari-titulo">Relaciones</h3>
+        <p class="expl">Cada relación visible, con los nodos que une: los dos extremos (directos) más todo lo que cuelga de ellos en la jerarquía (ramificaciones). Clic para resaltarlos en el grafo.</p>
+        <div class="nav"><input id="ari-q" type="search" placeholder="Filtrar por numeral o título" aria-label="Filtrar relaciones" style="flex:1 1 160px;min-width:0;font:13px var(--f-ui);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 8px">
+          <select id="ari-tipo" aria-label="Tipo de relación" style="width:auto"></select>
+          <select id="ari-orden" aria-label="Orden" style="width:auto"><option value="ram">más nodos con ramificaciones</option><option value="tipo">por tipo</option></select></div>
+        <div id="ari-lista"></div>
+      </section>
+    </div>
     <div class="cuerpo" id="p-filtros" role="tabpanel" hidden>
       <fieldset><legend>Resaltar un acto</legend>
         <select id="f-acto" aria-label="Resaltar un acto"><option value="">Ninguno</option></select>
@@ -1011,6 +1023,7 @@ function filtros() {
 function refrescar() {
   if (sel >= 0) { resalte = vecinos(sel); ficha(); }
   if (auto) agruparAuto(); else if (arbol) disposicionActual();
+  if (pestana === "ari") panelAristas();
   if (rutaModo && rutaModo.fase === "lista") calcularRuta();
   sucio = true;
 }
@@ -1046,16 +1059,18 @@ function selectorActos() {
 let pestana = "ficha";
 function mostrarPestana(p) {
   pestana = p;
-  for (const [t, c] of [["ficha", "t-ficha"], ["ind", "t-ind"], ["grp", "t-grp"], ["filtros", "t-filtros"]]) {
+  for (const [t, c] of [["ficha", "t-ficha"], ["ind", "t-ind"], ["grp", "t-grp"], ["ari", "t-ari"], ["filtros", "t-filtros"]]) {
     $(c).setAttribute("aria-selected", String(p === t)); $("p-" + t).hidden = p !== t;
   }
   if (p === "ind") indicadores();
   if (p === "grp") panelGrupos();
+  if (p === "ari") panelAristas();
 }
 $("t-ficha").onclick = () => mostrarPestana("ficha");
 $("t-filtros").onclick = () => mostrarPestana("filtros");
 $("t-ind").onclick = () => mostrarPestana("ind");
 $("t-grp").onclick = () => mostrarPestana("grp");
+$("t-ari").onclick = () => mostrarPestana("ari");
 function modo(m) {
   modoColor = m;
   $("c-cap").setAttribute("aria-pressed", String(m === "capitulo")); $("c-grp").setAttribute("aria-pressed", String(m === "grupo"));
@@ -1248,7 +1263,7 @@ function agruparAuto() {
   $("r-inter").max = Math.max(1, r.inter.length); interN = Math.min(interN, Math.max(1, r.inter.length));
   $("r-inter").value = interN; $("v-inter").textContent = `${interN} de ${r.inter.length}`;
   $("v-detalle").textContent = nfmt(r.gamma, 1);
-  if (pestana === "grp") panelGrupos();
+  if (pestana === "grp") panelGrupos(); if (pestana === "ari") panelAristas();
   if (sel >= 0) ficha();
   disposicionActual();
 }
@@ -1266,7 +1281,7 @@ function alternarAuto() {
     modo(previo === "auto" ? "capitulo" : previo);
     $("b-auto").setAttribute("aria-pressed", "false"); $("caja-detalle").hidden = true; $("b-inter").hidden = true; $("caja-inter").hidden = true; interHover = null;
     if (arbol && arbol.porGrupos) ramas(false); else disposicionActual();
-    if (pestana === "grp") panelGrupos();
+    if (pestana === "grp") panelGrupos(); if (pestana === "ari") panelAristas();
     if (sel >= 0) ficha();
   }
 }
@@ -1524,6 +1539,79 @@ function seccionAuto() {
       ${g.claves.length ? `<span class="claves">${g.claves.map(w => `<span class="etq">${esc(w)}</span>`).join("")}</span>` : ""}
       <span class="sub">${g.k >= 0 ? g.tipos.map(([t, c]) => `${c} ${esc(((TIPOS[t] || [t])[0]).toLowerCase())}`).join(" · ") : "nodos sin relaciones visibles o en grupos de menos de 3"}</span></button>`).join("") + `</section>` + seccionInter();
 }
+// ---------- pestaña Aristas: conexiones entre grupos y todas las relaciones, con nodos directos y ramificaciones ----------
+let ariLimite = 100;
+function descendientesVisibles() {
+  // por nodo, el conjunto de sus descendientes visibles en la jerarquía (incisos, subartículos…)
+  const hijosJ = N.map(() => []);
+  E.forEach(e => { if (e[2] === "jerarquia") hijosJ[e[0]].push(e[1]); });
+  const memo = new Map();
+  const d = i => {
+    if (memo.has(i)) return memo.get(i);
+    memo.set(i, new Set());
+    const out = new Set();
+    for (const h of hijosJ[i]) { if (nodoVisible(h)) out.add(h); d(h).forEach(x => out.add(x)); }
+    memo.set(i, out); return out;
+  };
+  return d;
+}
+function conRamas(nodos, desc) {
+  const todos = new Set();
+  for (const i of nodos) if (nodoVisible(i)) { todos.add(i); desc(i).forEach(x => todos.add(x)); }
+  return todos;
+}
+function panelAristas() {
+  const desc = descendientesVisibles();
+  // 1. conexiones entre grupos
+  const qs = auto && auto.inter ? interVisibles() : [];
+  $("ari-inter").innerHTML = !auto ? `<h3>Conexiones entre grupos</h3><p class="expl">Activa «Agrupar automáticamente» para ver aquí las conexiones entre grupos.</p>`
+    : `<h3>Conexiones entre grupos (${qs.length} de ${auto.inter.length})</h3><p class="expl">Siguen el segmentador «Más relevantes». Directos: nodos que forman las relaciones entre los dos grupos; con ramificaciones: más todo lo que cuelga de ellos.</p>` +
+      qs.map((q, r) => { const dir = [...q.nodos].filter(nodoVisible).length, tot = conRamas(q.nodos, desc).size;
+        return `<button class="fila" type="button" data-aq="${r}"><span class="rk">${r + 1}</span><span class="nm"><b>${nomG(q.a)} ↔ ${nomG(q.b)}</b>${esc(detalleInter(q).split(" · ")[0])}</span>
+          <span class="vl">${tot}<small>nodos</small></span><span class="sub">${q.n} relaciones · ${dir} nodos directos · ${tot - dir} en ramificaciones</span></button>`; }).join("");
+  $("ari-inter").querySelectorAll("[data-aq]").forEach(b => b.addEventListener("click", () => {
+    const q = qs[+b.dataset.aq], set = conRamas(q.nodos, desc);
+    sel = -1; ficha(); grpResaltado = -1; interHover = q; resalte = set; encuadrar([...set]); sucio = true;
+  }));
+  // 2. todas las relaciones visibles
+  const tipoSel = $("ari-tipo").value || "";
+  const tipos = [...new Set(E.filter((e, k) => aristaVisible(k)).map(e => e[2]))];
+  $("ari-tipo").innerHTML = `<option value="">Todos los tipos</option>` + tipos.map(t => `<option value="${t}">${esc(ARISTAS[t].n.split(" (")[0])}</option>`).join("");
+  $("ari-tipo").value = tipos.includes(tipoSel) ? tipoSel : "";
+  const q = plano($("ari-q").value.trim());
+  const cuenta = new Map();
+  const nRamas = k => {
+    if (cuenta.has(k)) return cuenta.get(k);
+    const [a, b] = E[k], n = conRamas([a, b], desc).size;
+    cuenta.set(k, n); return n;
+  };
+  let filas = [];
+  E.forEach((e, k) => {
+    if (!aristaVisible(k) || ($("ari-tipo").value && e[2] !== $("ari-tipo").value)) return;
+    if (q && !(indice[e[0]].includes(q) || indice[e[1]].includes(q))) return;
+    filas.push(k);
+  });
+  if ($("ari-orden").value === "tipo") filas.sort((x, y) => E[x][2].localeCompare(E[y][2]) || nRamas(y) - nRamas(x) || x - y);
+  else filas.sort((x, y) => nRamas(y) - nRamas(x) || x - y);
+  $("ari-titulo").textContent = `Relaciones (${filas.length.toLocaleString("es-CL")})`;
+  const max = filas.length ? nRamas(filas[0]) : 1;
+  $("ari-lista").innerHTML = filas.slice(0, ariLimite).map((k, r) => {
+    const [a, b, t, op] = E[k], tot = nRamas(k), dir = [a, b].filter(nodoVisible).length;
+    return `<button class="fila" type="button" data-ak="${k}"><span class="rk">${r + 1}</span>
+      <span class="nm"><b>${esc(N[a].l)}</b>${esc(t === "similitud" ? "↔" : "→")} <b>${esc(N[b].l)}</b></span><span class="vl">${tot}<small>nodos</small></span>
+      <span class="barra"><i style="width:${100 * tot / Math.max(max, 1)}%"></i></span>
+      <span class="sub">${esc(ARISTAS[t].sale)}${op ? " · " + esc(OPS[op] || op) : ""} · ${dir} directos · ${tot - dir} en ramificaciones</span></button>`;
+  }).join("") + (filas.length > ariLimite ? `<button class="btn" type="button" id="ari-mas" style="margin-top:8px">Mostrar ${Math.min(100, filas.length - ariLimite)} más</button>` : "") +
+    (!filas.length ? `<p class="vacio">Ninguna relación visible coincide.</p>` : "");
+  $("ari-lista").querySelectorAll("[data-ak]").forEach(bt => bt.addEventListener("click", () => {
+    const k = +bt.dataset.ak, set = conRamas([E[k][0], E[k][1]], desc);
+    sel = -1; ficha(); grpResaltado = -1; interHover = null; resalte = set; encuadrar([...set]); sucio = true;
+  }));
+  if ($("ari-mas")) $("ari-mas").onclick = () => { ariLimite += 100; panelAristas(); };
+}
+$("ari-q").addEventListener("input", () => { ariLimite = 100; panelAristas(); });
+$("ari-tipo").addEventListener("change", () => { ariLimite = 100; panelAristas(); });
+$("ari-orden").addEventListener("change", () => { ariLimite = 100; panelAristas(); });
 function seccionInter() {
   if (!auto || !auto.inter || !auto.inter.length) return "";
   const top = interVisibles(), rel = interMedida === "rel", val = q => rel ? q.rel : q.n, max = Math.max(...top.map(val), 1e-9);
@@ -1577,9 +1665,9 @@ $("b-auto").onclick = () => alternarAuto();
 $("b-inter").onclick = () => { verInter = !verInter; $("b-inter").setAttribute("aria-pressed", String(verInter)); $("caja-inter").hidden = !verInter; interHover = null; sucio = true; };
 $("r-inter").addEventListener("input", ev => {
   interN = +ev.target.value; $("v-inter").textContent = `${interN} de ${auto ? auto.inter.length : 0}`;
-  interHover = null; sucio = true; if (pestana === "grp") panelGrupos();
+  interHover = null; sucio = true; if (pestana === "grp") panelGrupos(); if (pestana === "ari") panelAristas();
 });
-$("s-inter").addEventListener("change", ev => { interMedida = ev.target.value; interHover = null; sucio = true; if (pestana === "grp") panelGrupos(); });
+$("s-inter").addEventListener("change", ev => { interMedida = ev.target.value; interHover = null; sucio = true; if (pestana === "grp") panelGrupos(); if (pestana === "ari") panelAristas(); });
 $("b-arbol").onclick = () => alternarArbol();
 $("b-completo").onclick = () => { arbol.raizSub = -1; $("b-completo").hidden = true; disposicionActual(); };
 $("r-jer").onclick = () => ramas(false);
