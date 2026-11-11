@@ -54,6 +54,11 @@ header .nota-ver { flex-basis: 100%; font-size: 12px; color: var(--muted); }
 canvas { display: block; width: 100%; height: 100%; cursor: grab; }
 canvas.sobre { cursor: pointer; }
 canvas.arrastra { cursor: grabbing; }
+canvas.modo-ruta, canvas.modo-ruta.sobre { cursor: crosshair; }
+.ruta dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 10px; margin: 6px 0 10px; font-size: 13px; }
+.ruta dt { color: var(--muted); }
+.ruta dd { margin: 0; font-weight: 600; }
+.ruta dd.falta { color: var(--focus); font-weight: 600; }
 .herr { position: absolute; left: 12px; top: 12px; display: flex; gap: 6px; flex-wrap: wrap; }
 .herr button, .btn { font: 500 12px var(--f-ui); color: var(--ink); background: var(--panel); border: 1px solid var(--line);
   border-radius: 6px; padding: 6px 10px; cursor: pointer; }
@@ -1292,20 +1297,40 @@ function grupoVirtualEn(px, py) {
 }
 
 // ---------- ruta más corta ----------
+const AYUDA_Q = "Buscar numeral, acto o texto (p. ej. 1.8.5.1, multa)";
 function textoFranja() {
   $("franja").hidden = !rutaModo || rutaModo.fase === "lista";
+  const eligiendo = !!rutaModo && rutaModo.fase !== "lista";
+  cv.classList.toggle("modo-ruta", eligiendo);
+  $("q").placeholder = !eligiendo ? AYUDA_Q : rutaModo.fase === "origen" ? "Busca el nodo de ORIGEN de la ruta…" : "Busca el nodo de DESTINO de la ruta…";
+  if (eligiendo) panelEleccion();
   if (!rutaModo) return;
   $("franja-txt").textContent = rutaModo.fase === "origen" ? "Ruta más corta: haz clic en el nodo de origen (o búscalo)"
     : `Origen: ${N[rutaModo.origen].l} · ahora haz clic en el destino (o búscalo)`;
 }
 function alternarRuta(origen = -1) {
   if (rutaModo && origen < 0) { salirRuta(); return; }
+  if (origen < 0 && sel >= 0) origen = sel;           // el nodo seleccionado es el origen
   rutaModo = { fase: origen >= 0 ? "destino" : "origen", origen, destino: -1, camino: null };
   $("b-ruta").setAttribute("aria-pressed", "true"); $("ruta-panel").innerHTML = "";
-  textoFranja(); mostrarPestana("ficha"); sucio = true;
+  mostrarPestana("ficha"); textoFranja(); sucio = true;
+  try { $("q").focus({ preventScroll: true }); } catch (_) {}
+}
+function panelEleccion() {
+  const r = rutaModo, nom = i => i >= 0 ? `${esc(N[i].l)} <span style="font-weight:400;color:var(--ink-2)">${esc(N[i].t === N[i].l ? "" : N[i].t.slice(0, 60))}</span>` : "";
+  $("ruta-panel").innerHTML = `<section class="ruta"><h3>Ruta más corta</h3>
+    <p class="expl">Haz clic en un nodo del grafo o búscalo arriba. Se usan las relaciones encendidas en Filtros.</p>
+    <dl><dt>Origen</dt>${r.origen >= 0 ? `<dd>${nom(r.origen)}</dd>` : `<dd class="falta">elige el origen…</dd>`}
+    <dt>Destino</dt>${r.fase === "destino" ? `<dd class="falta">elige el destino…</dd>` : "<dd>—</dd>"}</dl>
+    <div class="nav"><label class="chk" style="grid-template-columns:auto 1fr"><input type="checkbox" id="c-evitar3" ${$("c-evitar").checked ? "checked" : ""}><span>Evitar jerarquía</span></label>
+    ${r.origen >= 0 ? '<button class="btn" type="button" id="b-cambiar-origen">Cambiar origen</button>' : ""}<button class="btn" type="button" id="b-cancelar2">Cancelar</button></div></section>`;
+  $("c-evitar3").onchange = ev => { $("c-evitar").checked = ev.target.checked; };
+  if ($("b-cambiar-origen")) $("b-cambiar-origen").onclick = () => { rutaModo.origen = -1; rutaModo.fase = "origen"; textoFranja(); sucio = true; };
+  $("b-cancelar2").onclick = salirRuta;
 }
 function salirRuta() {
   rutaModo = null; $("b-ruta").setAttribute("aria-pressed", "false"); $("ruta-panel").innerHTML = ""; textoFranja();
+  $("q").placeholder = AYUDA_Q;
   if (resalte && sel < 0) resalte = null;
   sucio = true;
 }

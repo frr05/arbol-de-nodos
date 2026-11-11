@@ -119,7 +119,7 @@ El botón **«Vista de árbol»** reorganiza el grafo en un **árbol radial** qu
 ### Ruta más corta
 
 El botón **«Ruta más corta»**, o **«Ruta desde aquí»** en la ficha, encuentra el camino con menos pasos entre dos nodos.
-- **Cómo se usa:** eliges el origen y el destino con clic en el grafo o con el buscador.
+- **Cómo se usa:** si hay un nodo seleccionado, ese es el origen. Si no, eliges el origen y luego el destino con clic en el grafo (el cursor cambia a una cruz) o con el buscador. El recuadro «Ruta más corta» de la pestaña Nodo muestra qué falta elegir.
 - **Relaciones que usa:** las **visibles en Filtros**, sin dirección. La casilla «Evitar jerarquía» busca caminos solo por relaciones de contenido (citas, modificaciones, ubicaciones, similitud).
 - **Resultado:** el camino queda resaltado con números de paso, y en la pestaña Nodo se lista cada tramo con su relación en el sentido correcto. Por ejemplo: «1.9.3 —cita a→ 1.3.2 —mencionado por→ aclaración 2 —ubicado por→ Circular N°4».
 - Si no hay camino con las relaciones visibles, lo avisa.
