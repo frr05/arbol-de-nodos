@@ -104,7 +104,8 @@ El botón **«Agrupar automáticamente»**, sobre el grafo, calcula grupos en el
 - **Aristas entre grupos** (botón que aparece junto al agrupamiento): una curva entre cada par de islas que tienen relaciones entre sí, con grosor según cuántas son. Las más fuertes llevan su número.
   - Al pasar el mouse se ve el detalle por tipo de relación, por ejemplo «G1 ↔ G4 · 44 relaciones: 26 citas, 8 citas desde actos…».
   - Al hacer clic se resaltan los nodos que conectan esos dos grupos.
-  - La pestaña Grupos lista los 20 pares más conectados.
+  - **Más relevantes** (segmentador junto al botón): muestra solo las N conexiones más relevantes (por defecto 15). Se ordenan **por cantidad** de relaciones o **relativas al tamaño**: relaciones ÷ √(tamaño de un grupo × tamaño del otro), que destaca las uniones intensas entre grupos chicos.
+  - La pestaña Grupos lista las mismas conexiones, con el mismo filtro.
 - Otro clic en el botón vuelve exactamente a la disposición original.
 
 ### Vista de árbol

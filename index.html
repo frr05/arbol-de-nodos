@@ -150,6 +150,7 @@ select { width: 100%; font: 13px var(--f-ui); color: var(--ink); background: var
   border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; }
 .detalle input { width: 110px; accent-color: var(--ink); }
 .detalle span { font-variant-numeric: tabular-nums; min-width: 2.2em; }
+.detalle select { width: auto; font: 500 12px var(--f-ui); padding: 2px 4px; }
 .franja { position: absolute; left: 12px; right: 12px; bottom: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
   background: var(--panel); border: 1px solid var(--focus); border-radius: 8px; padding: 8px 12px; font-size: 13px; box-shadow: 0 4px 14px rgba(0,0,0,.12); }
 .franja #franja-txt { flex: 1 1 200px; font-weight: 600; }
@@ -239,6 +240,8 @@ body.con-lector { overflow: hidden; }
       <button id="b-completo" type="button" class="btn" hidden>Árbol completo</button>
       <button id="b-ruta" type="button" class="btn" aria-pressed="false">Ruta más corta</button>
       <button id="b-inter" type="button" class="btn" aria-pressed="true" hidden>Aristas entre grupos</button>
+      <label class="detalle" id="caja-inter" hidden>Más relevantes <input id="r-inter" type="range" min="1" max="50" step="1" value="15" aria-label="Cuántas aristas entre grupos mostrar"><span id="v-inter">15</span>
+        <select id="s-inter" aria-label="Medida de relevancia"><option value="n">por cantidad</option><option value="rel">relativas al tamaño</option></select></label>
       <label class="detalle" id="caja-detalle" hidden>Detalle <input id="r-detalle" type="range" min="0.5" max="3" step="0.1" value="1" aria-label="Detalle del agrupamiento: más alto, más grupos"><span id="v-detalle">1,0</span></label>
     </div>
     <div class="franja" id="franja" hidden>
@@ -354,7 +357,7 @@ let hastaK = ACTOS.length - 1;
 let posOriginal = null;          // posiciones antes de islas o árbol; se restauran al apagar ambos
 let arbol = null;                // vista de árbol: { porGrupos, raizSub, sub, virtuales, aristasV, nivel, rmax }
 let rutaModo = null;
-let verInter = true, interHover = -1;   // aristas entre grupos (agrupamiento automático)             // ruta más corta: { fase, origen, destino, camino, aristas }          // todos los actos; los indicadores se comparan con las Bases solas (k = 0)
+let verInter = true, interHover = null, interN = 15, interMedida = "n";   // aristas entre grupos (agrupamiento automático)             // ruta más corta: { fase, origen, destino, camino, aristas }          // todos los actos; los indicadores se comparan con las Bases solas (k = 0)
 let escala = 1, sel = -1, hover = -1, resalte = null, historia = [], etiquetas = true, capResaltado = -1;
 let sucio = true;
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
@@ -537,12 +540,18 @@ function curvaInter(q) {
   const curva = .12 * d, p1 = [(p0[0] + p2[0]) / 2 - uy * curva, (p0[1] + p2[1]) / 2 + ux * curva];
   return [p0, p1, p2];
 }
+function interVisibles() {
+  // las N aristas entre grupos más relevantes, por cantidad o por intensidad relativa al tamaño de los grupos
+  if (!auto || !auto.inter) return [];
+  const clave = interMedida === "rel" ? (q => q.rel) : (q => q.n);
+  return [...auto.inter].sort((x, y) => clave(y) - clave(x) || y.n - x.n || x.a - y.a || x.b - y.b).slice(0, interN);
+}
 function dibujarInter(foco) {
-  const max = Math.max(...auto.inter.map(q => q.n), 1);
-  auto.inter.forEach((q, k) => {
+  const lista = interVisibles(), max = Math.max(...lista.map(q => q.n), 1);
+  lista.forEach(q => {
     const c = curvaInter(q);
     if (!c) return;
-    const [p0, p1, p2] = c, activo = k === interHover;
+    const [p0, p1, p2] = c, activo = q === interHover;
     ctx.beginPath(); ctx.moveTo(p0[0], p0[1]); ctx.quadraticCurveTo(p1[0], p1[1], p2[0], p2[1]);
     ctx.lineWidth = activo ? 2 + 7 * Math.sqrt(q.n / max) : .8 + 6 * Math.sqrt(q.n / max);
     ctx.strokeStyle = activo ? paleta.focus : paleta.ink2;
@@ -555,26 +564,25 @@ function dibujarInter(foco) {
   });
 }
 function interEn(px, py) {
-  if (!auto || !auto.inter || !verInter || arbol) return -1;
-  let mejor = -1, dmin = 7;
-  auto.inter.forEach((q, k) => {
+  if (!auto || !auto.inter || !verInter || arbol) return null;
+  let mejor = null, dmin = 7;
+  interVisibles().forEach(q => {
     const c = curvaInter(q);
     if (!c) return;
     const [p0, p1, p2] = c;
     for (let t = 0; t <= 1; t += .05) {
       const x = (1 - t) ** 2 * p0[0] + 2 * (1 - t) * t * p1[0] + t * t * p2[0], y = (1 - t) ** 2 * p0[1] + 2 * (1 - t) * t * p1[1] + t * t * p2[1];
       const d = Math.hypot(x - px, y - py);
-      if (d < dmin) { dmin = d; mejor = k; }
+      if (d < dmin) { dmin = d; mejor = q; }
     }
   });
   return mejor;
 }
 const nomG = k => k >= 0 ? `G${k + 1}` : "Sueltos";
 const detalleInter = q => [...q.tipos].sort((x, y) => y[1] - x[1]).map(([t, c]) => `${c} ${ARISTAS[t].n.split(" (")[0].toLowerCase()}`).join(" · ");
-function resaltarInter(k) {
-  const q = auto.inter[k];
+function resaltarInter(q) {
   sel = -1; ficha(); grpResaltado = -1;
-  resalte = new Set([...q.nodos].filter(nodoVisible)); interHover = k;
+  resalte = new Set([...q.nodos].filter(nodoVisible)); interHover = q;
   encuadrar([...resalte]); sucio = true;
 }
 function texto(t, x, y, opciones = {}) {
@@ -1181,7 +1189,9 @@ function calcularAuto() {
     const q = pares.get(clave);
     q.n++; q.tipos.set(e[2], (q.tipos.get(e[2]) || 0) + 1); q.nodos.add(e[0]); q.nodos.add(e[1]);
   });
+  const tam = new Map(grupos.map(g => [g.k, g.miembros.length]));
   const inter = [...pares.values()].sort((x, y) => y.n - x.n || x.a - y.a || x.b - y.b);
+  inter.forEach(q => { q.rel = q.n / Math.sqrt((tam.get(q.a) || 1) * (tam.get(q.b) || 1)); });
   return { grupos, Q, gamma, inter };
 }
 function islas(grupos, orig) {
@@ -1244,6 +1254,8 @@ function disposicionActual() {
 function agruparAuto() {
   const r = calcularAuto();
   auto = { ...r, modoPrevio: auto.modoPrevio };
+  $("r-inter").max = Math.max(1, r.inter.length); interN = Math.min(interN, Math.max(1, r.inter.length));
+  $("r-inter").value = interN; $("v-inter").textContent = `${interN} de ${r.inter.length}`;
   $("v-detalle").textContent = nfmt(r.gamma, 1);
   if (pestana === "grp") panelGrupos();
   if (sel >= 0) ficha();
@@ -1254,14 +1266,14 @@ function alternarAuto() {
     guardarOriginal();
     auto = { modoPrevio: modoColor };
     modo("auto");
-    $("b-auto").setAttribute("aria-pressed", "true"); $("caja-detalle").hidden = false; $("b-inter").hidden = false;
+    $("b-auto").setAttribute("aria-pressed", "true"); $("caja-detalle").hidden = false; $("b-inter").hidden = false; $("caja-inter").hidden = !verInter;
     resalte = sel >= 0 ? vecinos(sel) : null; grpResaltado = -1;
     agruparAuto();
   } else {
     const previo = auto.modoPrevio;
     auto = null; N.forEach(n => { delete n.ga; });
     modo(previo === "auto" ? "capitulo" : previo);
-    $("b-auto").setAttribute("aria-pressed", "false"); $("caja-detalle").hidden = true; $("b-inter").hidden = true; interHover = -1;
+    $("b-auto").setAttribute("aria-pressed", "false"); $("caja-detalle").hidden = true; $("b-inter").hidden = true; $("caja-inter").hidden = true; interHover = null;
     if (arbol && arbol.porGrupos) ramas(false); else disposicionActual();
     if (pestana === "grp") panelGrupos();
     if (sel >= 0) ficha();
@@ -1523,13 +1535,13 @@ function seccionAuto() {
 }
 function seccionInter() {
   if (!auto || !auto.inter || !auto.inter.length) return "";
-  const top = auto.inter.slice(0, 20), max = top[0].n;
+  const top = interVisibles(), rel = interMedida === "rel", val = q => rel ? q.rel : q.n, max = Math.max(...top.map(val), 1e-9);
   const total = auto.inter.reduce((a, q) => a + q.n, 0);
-  return `<section class="indicador"><h3>Conexiones entre grupos (${auto.inter.length} pares)</h3>
-    <p class="expl">${total} relaciones unen grupos distintos. En el grafo son las curvas entre islas: el grosor indica cuántas relaciones hay. Clic en una fila o en una curva para ver los nodos que conectan esos dos grupos.</p>` +
+  return `<section class="indicador"><h3>Conexiones entre grupos (${top.length} de ${auto.inter.length} pares)</h3>
+    <p class="expl">${total} relaciones unen grupos distintos. Se muestran las ${top.length} más relevantes ${rel ? "relativas al tamaño (relaciones ÷ √(tamaño × tamaño): destaca uniones intensas entre grupos chicos)" : "por cantidad de relaciones"}; ajústalo con «Más relevantes» sobre el grafo. Clic en una fila o en una curva para ver los nodos que conectan esos dos grupos.</p>` +
     top.map((q, r) => `<button class="fila" type="button" data-inter="${r}"><span class="rk">${r + 1}</span>
       <span class="nm"><b>${nomG(q.a)} ↔ ${nomG(q.b)}</b>${esc([q.a, q.b].map(k => (auto.grupos.find(g => g.k === k)?.claves || []).slice(0, 2).join(", ")).join(" · "))}</span>
-      <span class="vl">${q.n}</span><span class="barra"><i style="width:${100 * q.n / max}%"></i></span><span class="sub">${esc(detalleInter(q))}</span></button>`).join("") + `</section>`;
+      <span class="vl">${rel ? nfmt(q.rel, 2) : q.n}${rel ? `<small>${q.n} rel.</small>` : ""}</span><span class="barra"><i style="width:${100 * val(q) / max}%"></i></span><span class="sub">${esc(detalleInter(q))}</span></button>`).join("") + `</section>`;
 }
 
 // ---------- grupos (comunidades) y pares parecidos ----------
@@ -1555,7 +1567,8 @@ function panelGrupos() {
     resalte = new Set(g.miembros.filter(nodoVisible)); encuadrar([...resalte]); sucio = true;
   }));
   if ($("b-auto2")) $("b-auto2").onclick = () => alternarAuto();
-  $("grupos").querySelectorAll("[data-inter]").forEach(b => b.addEventListener("click", () => resaltarInter(+b.dataset.inter)));
+  const visibles = interVisibles();
+  $("grupos").querySelectorAll("[data-inter]").forEach(b => b.addEventListener("click", () => resaltarInter(visibles[+b.dataset.inter])));
   $("grupos").querySelectorAll("[data-g]").forEach(b => b.addEventListener("click", () => {
     const k = +b.dataset.g;
     sel = -1; ficha(); capResaltado = -1; marcarLeyenda();
@@ -1570,7 +1583,12 @@ function panelGrupos() {
 }
 $("b-encuadrar").onclick = () => encuadrar(todos());
 $("b-auto").onclick = () => alternarAuto();
-$("b-inter").onclick = () => { verInter = !verInter; $("b-inter").setAttribute("aria-pressed", String(verInter)); interHover = -1; sucio = true; };
+$("b-inter").onclick = () => { verInter = !verInter; $("b-inter").setAttribute("aria-pressed", String(verInter)); $("caja-inter").hidden = !verInter; interHover = null; sucio = true; };
+$("r-inter").addEventListener("input", ev => {
+  interN = +ev.target.value; $("v-inter").textContent = `${interN} de ${auto ? auto.inter.length : 0}`;
+  interHover = null; sucio = true; if (pestana === "grp") panelGrupos();
+});
+$("s-inter").addEventListener("change", ev => { interMedida = ev.target.value; interHover = null; sucio = true; if (pestana === "grp") panelGrupos(); });
 $("b-arbol").onclick = () => alternarArbol();
 $("b-completo").onclick = () => { arbol.raizSub = -1; $("b-completo").hidden = true; disposicionActual(); };
 $("r-jer").onclick = () => ramas(false);
@@ -1740,13 +1758,13 @@ cv.addEventListener("pointermove", ev => {
     sucio = true; return;
   }
   const i = nodoEn(ev.offsetX, ev.offsetY);
-  const ki = i < 0 ? interEn(ev.offsetX, ev.offsetY) : -1;
+  const ki = i < 0 ? interEn(ev.offsetX, ev.offsetY) : null;
   if (i !== hover) { hover = i; sucio = true; cv.classList.toggle("sobre", i >= 0); }
-  if (ki !== interHover && !resalte) { interHover = ki; sucio = true; cv.classList.toggle("sobre", i >= 0 || ki >= 0); }
+  if (ki !== interHover && !resalte) { interHover = ki; sucio = true; cv.classList.toggle("sobre", i >= 0 || !!ki); }
   const p = $("punta");
-  if (i < 0 && ki >= 0 && ev.pointerType === "mouse") {
-    const q = auto.inter[ki];
-    p.innerHTML = `<b>${nomG(q.a)} ↔ ${nomG(q.b)}</b> · ${q.n} relaciones<span>${esc(detalleInter(q))}</span><span>Clic para ver los ${q.nodos.size} nodos que las forman</span>`;
+  if (i < 0 && ki && ev.pointerType === "mouse") {
+    const q = ki;
+    p.innerHTML = `<b>${nomG(q.a)} ↔ ${nomG(q.b)}</b> · ${q.n} relaciones · intensidad ${nfmt(q.rel, 2)}<span>${esc(detalleInter(q))}</span><span>Clic para ver los ${q.nodos.size} nodos que las forman</span>`;
     p.hidden = false;
     p.style.left = Math.min(ev.offsetX + 14, W - 290) + "px"; p.style.top = Math.min(ev.offsetY + 14, H - 80) + "px";
   } else if (i >= 0 && ev.pointerType === "mouse") {
@@ -1765,9 +1783,9 @@ function soltar(ev) {
     const v = i < 0 ? grupoVirtualEn(ev.offsetX, ev.offsetY) : null;
     if (i >= 0 && rutaModo && rutaModo.fase !== "lista") elegirEnRuta(i);
     else if (i >= 0) seleccionar(i);
-    else if (!v && interEn(ev.offsetX, ev.offsetY) >= 0) resaltarInter(interEn(ev.offsetX, ev.offsetY));
+    else if (!v && interEn(ev.offsetX, ev.offsetY)) resaltarInter(interEn(ev.offsetX, ev.offsetY));
     else if (v && v.g !== null && auto) { const g = auto.grupos.find(x => x.k === v.g); sel = -1; ficha(); resalte = new Set(g.miembros.filter(nodoVisible)); encuadrar([...resalte]); sucio = true; }
-    else if (sel >= 0 || resalte) { sel = -1; resalte = null; interHover = -1; capResaltado = -1; marcarLeyenda(); $("f-acto").value = ""; ficha(); sucio = true; }
+    else if (sel >= 0 || resalte) { sel = -1; resalte = null; interHover = null; capResaltado = -1; marcarLeyenda(); $("f-acto").value = ""; ficha(); sucio = true; }
   }
   arrastre = null; cv.classList.remove("arrastra");
 }
