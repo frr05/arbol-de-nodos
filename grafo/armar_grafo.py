@@ -322,7 +322,14 @@ class Grafo:
 
     def similitud(self, por_nodo: float = 2.0):
         """Artículo ↔ artículo por coseno de sus vectores promedio: árbol de expansión máxima + pares sobre un umbral
-        que deja unas `por_nodo` aristas por artículo en total."""
+        que deja unas `por_nodo` aristas por artículo en total. Sin vectores (una concesión sin EMBEDDINGS ni CHUNKS),
+        no hay similitud y los grupos se arman solo con las citas entre artículos."""
+        if not ((self.d_vec / f"EMBEDDINGS_{self.cid}.npz").exists() and (self.d_vec / f"CHUNKS_{self.cid}.jsonl").exists()):
+            self.sin_vectores = True
+            self.notas.append("sin vectores bge-m3: sin relaciones de similitud ni artículos parecidos; los grupos salen "
+                              "solo de las citas entre artículos")
+            self.art_ids, self.S = sorted(nid for nid, n in self.nodos.items() if n["tipo"] == "articulo"), None
+            return
         z = np.load(self.d_vec / f"EMBEDDINGS_{self.cid}.npz", allow_pickle=True)
         vec = dict(zip([str(i) for i in z["ids"]], z["vectores"]))
         grupos = defaultdict(list)
@@ -451,6 +458,9 @@ class Grafo:
             if self.nodos[nid].get("comunidad") is None and self.nodos[nid]["tipo"] in ("fragmento", "acto"):
                 self.nodos[nid]["comunidad"] = cnt.most_common(1)[0][0]
         # similares: los 8 artículos más parecidos a cada uno, y los pares muy parecidos sin cita entre ellos
+        if S is None:
+            self.pares_similares = []
+            return
         for i, a in enumerate(ids):
             orden = [j for j in np.argsort(-S[i]) if j != i][:8]
             self.nodos[a]["similares"] = [(ids[j], round(float(S[i, j]), 3)) for j in orden]
@@ -601,12 +611,13 @@ class Grafo:
         ka = Counter(k for _, _, k, _ in self.aristas)
         ops = Counter(op for _, _, k, op in self.aristas if k == "modifica")
         lineas = [f"# Grafo {self.cid} · {self.arbol['concesion']['nombre']}", "",
-                  f"Árbol generado en MT-v3 el {self.arbol.get('generado')}. Ver `{self.dv.relative_to(RAIZ)}/FUENTE.md`.", "",
+                  f"Árbol generado en MT-v3 el {self.arbol.get('generado')}. Ver `{self.dv.relative_to(RAIZ).as_posix()}/FUENTE.md`.", "",
                   f"**{len(self.nodos)} nodos** y **{len(self.aristas)} aristas**.", "", "| Tipo de nodo | Cantidad |",
                   "|---|---:|"] + [f"| {k} | {v} |" for k, v in kn.most_common()] + [
                   "", "| Tipo de arista | Cantidad |", "|---|---:|"] + [f"| {k} | {v} |" for k, v in ka.most_common()] + [
                   "", "Operaciones de las aristas `modifica`: " + ", ".join(f"{k} {v}" for k, v in ops.most_common()) + ".",
-                  "", f"Similitud: umbral de coseno {getattr(self, 'umbral_similitud', 0):.3f} (árbol de expansión "
+                  "", "Similitud: sin vectores bge-m3 en esta concesión." if getattr(self, "sin_vectores", False) else
+                  f"Similitud: umbral de coseno {getattr(self, 'umbral_similitud', 0):.3f} (árbol de expansión "
                   "máxima + los pares más parecidos, unas 2 aristas por artículo)."] + (
                   ["", "Notas de esta versión: " + "; ".join(self.notas) + "."] if self.notas else [])
         return "\n".join(lineas) + "\n"
@@ -618,9 +629,12 @@ def pagina(cuerpo: str) -> str:
             + cuerpo + "\n</body>\n</html>\n")
 
 
-def visor(versiones: list[dict]) -> str:
-    """Plantilla con una o varias versiones incrustadas; abre la marcada `defecto` (la más reciente)."""
+def visor(versiones: list[dict], cid: str = "RITP") -> str:
+    """Plantilla con una o varias versiones incrustadas; abre la marcada `defecto` (la más reciente). La plantilla
+    trae el título de la pestaña de RITP; para otra concesión se cambia solo en la salida."""
     plantilla = (Path(__file__).parent / "plantilla.html").read_text(encoding="utf-8")
+    if cid != "RITP":
+        plantilla = plantilla.replace("<title>Grafo RITP</title>", f"<title>Grafo {cid}</title>", 1)
     js = lambda x: json.dumps(x, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
     lista = [{k: v[k] for k in ("id", "etiqueta", "generado", "nodos", "relaciones", "notas", "defecto")} for v in versiones]
     bloques = [f'<script id="versiones" type="application/json">{js(lista)}</script>'] + [
@@ -659,10 +673,11 @@ def main():
         fecha = (g.arbol.get("generado") or "")[:10]
         versiones.append({"id": nombre or "base", "datos": datos, "generado": g.arbol.get("generado"),
                           "etiqueta": f"{fecha} · {len(g.arbol['nodos']):,} nodos".replace(",", ".")
-                                      + (" (base, ver-estable-arbol)" if not nombre else ""),
+                                      + ((" (base, ver-estable-arbol)" if args.concesion == "RITP" else " (base)")
+                                         if not nombre else ""),
                           "nodos": len(g.nodos), "relaciones": len(g.aristas), "notas": g.notas, "defecto": False})
-        (salida / f"grafo_{args.concesion}{g.sufijo}.html").write_text(pagina(visor([versiones[-1] | {"defecto": True}])),
-                                                                       encoding="utf-8")
+        (salida / f"grafo_{args.concesion}{g.sufijo}.html").write_text(
+            pagina(visor([versiones[-1] | {"defecto": True}], args.concesion)), encoding="utf-8")
         g.graphml(salida / f"grafo_{args.concesion}{g.sufijo}.graphml")
         (salida / f"resumen_{args.concesion}{g.sufijo}.md").write_text(g.resumen(), encoding="utf-8")
         print(g.resumen())
@@ -670,11 +685,77 @@ def main():
     versiones[0]["defecto"] = True
     if len(versiones) > 1:
         versiones[0]["etiqueta"] += " (la más reciente)"
-    cuerpo = visor(versiones)
+    cuerpo = visor(versiones, args.concesion)
     if args.fragmento:
         args.fragmento.write_text(cuerpo, encoding="utf-8")
     if args.concesion == "RITP":            # portada de GitHub Pages: el visor de la concesión piloto, con sus versiones
         (RAIZ / "index.html").write_text(pagina(cuerpo), encoding="utf-8")
+    else:                                   # las demás concesiones: su visor con todas las versiones en salida/
+        (salida / f"visor_{args.concesion}.html").write_text(pagina(cuerpo), encoding="utf-8")
+    (RAIZ / "concesiones.html").write_text(pagina_concesiones(), encoding="utf-8")
+
+
+def pagina_concesiones() -> str:
+    """concesiones.html: una tarjeta por concesión de data/ con enlace relativo a su visor (RITP → index.html,
+    las demás → salida/visor_<ID>.html), para que funcione igual en GitHub Pages que abriendo el archivo."""
+    import html
+    esc = lambda x: html.escape(str(x), quote=True)
+    tarjetas = []
+    for d in sorted(p for p in (RAIZ / "data").iterdir() if (p / "nodos_versionados.json").exists()):
+        cid = d.name
+        rutas = [d / "nodos_versionados.json"] + sorted((d / "versiones").glob("*/nodos_versionados.json"))
+        arboles = [json.loads(r.read_text(encoding="utf-8")) for r in rutas]
+        ultimo = max(arboles, key=lambda a: a.get("generado") or "")
+        enlace = "index.html" if cid == "RITP" else f"salida/visor_{cid}.html"
+        if not (RAIZ / enlace).exists():
+            continue
+        sufijo = "" if ultimo is arboles[0] else "_" + rutas[arboles.index(ultimo)].parent.name
+        resumen = RAIZ / "salida" / f"resumen_{cid}{sufijo}.md"
+        m = re.search(r"\*\*(\d+) nodos\*\* y \*\*(\d+) aristas\*\*", resumen.read_text(encoding="utf-8")) \
+            if resumen.exists() else None
+        n_arbol = f"{len(ultimo['nodos']):,}".replace(",", ".")
+        grafo = (f"{int(m[1]):,} nodos · {int(m[2]):,} relaciones".replace(",", ".") if m else "")
+        tarjetas.append(
+            f'<a class="tarjeta" href="{esc(enlace)}"><span class="cod">{esc(cid)}</span>'
+            f'<span class="nom">{esc(ultimo["concesion"]["nombre"])}</span>'
+            f'<span class="dato">Árbol del {esc((ultimo.get("generado") or "")[:10])} · {n_arbol} nodos del árbol · '
+            f'{len(arboles)} {"versión" if len(arboles) == 1 else "versiones"}</span>'
+            + (f'<span class="dato">Grafo: {grafo}</span>' if grafo else "")
+            + f'<span class="ir">Abrir el grafo →</span></a>')
+    return f"""<title>Concesiones · Árbol de nodos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root {{ --bg: #eef2f4; --panel: #ffffff; --ink: #13212b; --ink-2: #44535f; --muted: #75838f; --line: #d3dbe1;
+  --focus: #0b6bcb; --f-ui: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; color-scheme: light; }}
+@media (prefers-color-scheme: dark) {{ :root:not([data-theme="light"]) {{ --bg: #0d1418; --panel: #141d23;
+  --ink: #e6ecef; --ink-2: #a9b6bf; --muted: #76848e; --line: #25313a; --focus: #5aa2f0; color-scheme: dark; }} }}
+:root[data-theme="dark"] {{ --bg: #0d1418; --panel: #141d23; --ink: #e6ecef; --ink-2: #a9b6bf; --muted: #76848e;
+  --line: #25313a; --focus: #5aa2f0; color-scheme: dark; }}
+* {{ box-sizing: border-box; }}
+body {{ background: var(--bg); color: var(--ink); font-family: var(--f-ui); margin: 0; }}
+main {{ max-width: 920px; margin: 0 auto; padding: 40px 16px 56px; }}
+h1 {{ font-size: 26px; font-weight: 700; margin: 0 0 6px; }}
+p.sub {{ color: var(--ink-2); margin: 0 0 28px; line-height: 1.5; }}
+.lista {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }}
+.tarjeta {{ display: flex; flex-direction: column; gap: 6px; padding: 18px; background: var(--panel); color: inherit;
+  border: 1px solid var(--line); border-radius: 10px; text-decoration: none; }}
+.tarjeta:hover, .tarjeta:focus-visible {{ border-color: var(--focus); outline: none; }}
+.cod {{ font-family: var(--f-mono); font-size: 13px; color: var(--muted); }}
+.nom {{ font-size: 17px; font-weight: 600; line-height: 1.3; }}
+.dato {{ font-size: 13px; color: var(--ink-2); }}
+.ir {{ margin-top: auto; padding-top: 8px; font-size: 14px; font-weight: 600; color: var(--focus); }}
+</style>
+<main>
+<h1>Árbol de nodos · concesiones</h1>
+<p class="sub">Grafo interactivo de cada concesión, armado desde su árbol de nodos versionados (Bases de Licitación,
+actos posteriores y sus relaciones). Cada grafo trae todas sus versiones en el selector «Versión».</p>
+<div class="lista">
+{chr(10).join(tarjetas)}
+</div>
+</main>"""
 
 
 if __name__ == "__main__":

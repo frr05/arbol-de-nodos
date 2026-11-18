@@ -196,3 +196,21 @@ El script lee `data/RITP/` y escribe todo en `salida/`. `grafo/plantilla.html` e
 El texto viene del OCR de los documentos públicos de la concesión, publicados por la DGC, y se mantiene literal. Puede tener errores de lectura, como «1,14» por «1.14».
 
 `grafo/numerales.py` es una copia de `mt/numerales.py` de MT-v3, para comparar numerales igual que el pipeline (`L6.32` = `1.6.32` = `I.6.32`).
+
+## Otras concesiones
+
+Además de RITP, el repo trae otras concesiones del pipeline MT con Muse Spark (repo `frr05/Arbol-Rutas-`). Cada una tiene su propio visor, con todas sus versiones, y **https://frr05.github.io/arbol-de-nodos/concesiones.html** las lista todas. La raíz del sitio sigue siendo el visor de RITP.
+
+| ID | Concesión | Árbol más reciente | Versiones | Nodos del árbol | Grafo en Pages |
+|---|---|---|---:|---:|---|
+| RITP | Concesión Ruta Interportuaria Talcahuano – Penco | 2026-11-11 | 2 | 2 536 | [index.html](https://frr05.github.io/arbol-de-nodos/) |
+
+Una concesión sin vectores bge-m3 (`EMBEDDINGS_<ID>.npz`) se arma igual, pero sin relaciones de similitud ni «artículos más parecidos», y sus grupos salen solo de las citas entre artículos. El visor lo indica bajo el selector de versión.
+
+### Agregar una concesión
+
+1. Copia a `data/<ID>/`, desde la carpeta de la concesión en `Arbol-Rutas-`: `nodos_versionados.json`, `revision/actos.csv`, `cache/estructura/bases.json`, `cache/fragmentos/` → `fragmentos/` y `cache/texto/` → `texto/` (y `CHUNKS_<ID>.jsonl` + `EMBEDDINGS_<ID>.npz` si los tiene). Anota el origen en `data/<ID>/FUENTE.md`.
+2. `python grafo/armar_grafo.py <ID>`: escribe `salida/grafo_<ID>…`, `salida/visor_<ID>.html` y actualiza `concesiones.html`. La primera vez calcula la disposición (de 15 a 30 min en una concesión grande).
+3. `python grafo/verificar_grafo.py <ID>` debe terminar en «verificación OK».
+
+Una versión nueva de una concesión que ya está va en `data/<ID>/versiones/<fecha>/`, igual que en RITP.
