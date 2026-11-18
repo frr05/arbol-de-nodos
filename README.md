@@ -10,11 +10,11 @@ La idea visual sigue el «Product Space» de Hidalgo y Hausmann:
 - un núcleo denso y una periferia;
 - etiquetas de grupo alrededor de la red.
 
-Hoy contiene la **Ruta Interportuaria Talcahuano – Penco (RITP)**.
+Hoy contiene la **Ruta Interportuaria Talcahuano – Penco (RITP)** y la **Primera Concesión Rutas del Loa (LOA)** (ver «Otras concesiones»).
 
 ## Ver en línea
 
-Con GitHub Pages activo, el grafo se abre en **https://frr05.github.io/arbol-de-nodos/**. `index.html` es el mismo visor de `salida/grafo_RITP.html` y lo regenera el script.
+Con GitHub Pages activo, **https://frr05.github.io/arbol-de-nodos/** abre la portada: una tarjeta por concesión para elegir cuál ver. El visor de RITP, con todas sus versiones, está en **https://frr05.github.io/arbol-de-nodos/salida/visor_RITP.html**. El script regenera la portada (`index.html`) y los visores. Los enlaces antiguos a un nodo de RITP en la raíz (`…/arbol-de-nodos/#n123`) llevan a su visor.
 
 Para activarlo, una sola vez:
 1. Entra a *Settings → Pages* del repo.
@@ -44,7 +44,7 @@ El visor lo indica bajo el selector. La disposición de una versión parte de la
 1. Copia su `nodos_versionados.json` a `data/<ID>/versiones/<fecha>/`. Si la versión tiene insumos propios, agrega `fragmentos/`, `texto/`, `actos.csv`, `CHUNKS_<ID>.jsonl` y `EMBEDDINGS_<ID>.npz`.
 2. Ejecuta `python grafo/armar_grafo.py <ID>`.
 
-Cada versión tiene además su visor, su GraphML y su resumen propios en `salida/` (`grafo_RITP_2026-11-11.html`…). `index.html` reúne todas.
+Cada versión tiene además su visor, su GraphML y su resumen propios en `salida/` (`grafo_RITP_2026-11-11.html`…). `salida/visor_RITP.html` reúne todas.
 
 ## Abrir el grafo
 
@@ -199,11 +199,11 @@ El texto viene del OCR de los documentos públicos de la concesión, publicados 
 
 ## Otras concesiones
 
-Además de RITP, el repo trae otras concesiones del pipeline MT con Muse Spark (repo `frr05/Arbol-Rutas-`). Cada una tiene su propio visor, con todas sus versiones, y **https://frr05.github.io/arbol-de-nodos/concesiones.html** las lista todas. La raíz del sitio sigue siendo el visor de RITP.
+Además de RITP, el repo trae otras concesiones del pipeline MT con Muse Spark (repo `frr05/Arbol-Rutas-`). Cada una tiene su propio visor, con todas sus versiones, y la portada **https://frr05.github.io/arbol-de-nodos/** las lista todas (`concesiones.html` redirige a ella).
 
 | ID | Concesión | Árbol más reciente | Versiones | Nodos del árbol | Grafo en Pages |
 |---|---|---|---:|---:|---|
-| RITP | Concesión Ruta Interportuaria Talcahuano – Penco | 2026-11-11 | 2 | 2 536 | [index.html](https://frr05.github.io/arbol-de-nodos/) |
+| RITP | Concesión Ruta Interportuaria Talcahuano – Penco | 2026-11-11 | 2 | 2 536 | [salida/visor_RITP.html](https://frr05.github.io/arbol-de-nodos/salida/visor_RITP.html) |
 | LOA | Primera Concesión Rutas del Loa | 2026-11-18 | 1 | 4 622 | [salida/visor_LOA.html](https://frr05.github.io/arbol-de-nodos/salida/visor_LOA.html) |
 
 Una concesión sin vectores bge-m3 (`EMBEDDINGS_<ID>.npz`) se arma igual, pero sin relaciones de similitud ni «artículos más parecidos», y sus grupos salen solo de las citas entre artículos. El visor lo indica bajo el selector de versión.
@@ -211,7 +211,7 @@ Una concesión sin vectores bge-m3 (`EMBEDDINGS_<ID>.npz`) se arma igual, pero s
 ### Agregar una concesión
 
 1. Copia a `data/<ID>/`, desde la carpeta de la concesión en `Arbol-Rutas-`: `nodos_versionados.json`, `revision/actos.csv`, `cache/estructura/bases.json`, `cache/fragmentos/` → `fragmentos/` y `cache/texto/` → `texto/` (y `CHUNKS_<ID>.jsonl` + `EMBEDDINGS_<ID>.npz` si los tiene). Anota el origen en `data/<ID>/FUENTE.md`.
-2. `python grafo/armar_grafo.py <ID>`: escribe `salida/grafo_<ID>…`, `salida/visor_<ID>.html` y actualiza `concesiones.html`. La primera vez calcula la disposición (de 15 a 30 min en una concesión grande).
+2. `python grafo/armar_grafo.py <ID>`: escribe `salida/grafo_<ID>…`, `salida/visor_<ID>.html` y actualiza la portada `index.html`. La primera vez calcula la disposición (de 15 a 30 min en una concesión grande).
 3. `python grafo/verificar_grafo.py <ID>` debe terminar en «verificación OK».
 
 Una versión nueva de una concesión que ya está va en `data/<ID>/versiones/<fecha>/`, igual que en RITP.

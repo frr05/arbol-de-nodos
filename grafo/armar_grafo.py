@@ -688,16 +688,22 @@ def main():
     cuerpo = visor(versiones, args.concesion)
     if args.fragmento:
         args.fragmento.write_text(cuerpo, encoding="utf-8")
-    if args.concesion == "RITP":            # portada de GitHub Pages: el visor de la concesión piloto, con sus versiones
-        (RAIZ / "index.html").write_text(pagina(cuerpo), encoding="utf-8")
-    else:                                   # las demás concesiones: su visor con todas las versiones en salida/
-        (salida / f"visor_{args.concesion}.html").write_text(pagina(cuerpo), encoding="utf-8")
-    (RAIZ / "concesiones.html").write_text(pagina_concesiones(), encoding="utf-8")
+    # visor de la concesión con todas sus versiones; la portada de GitHub Pages (index.html) elige la concesión
+    (salida / f"visor_{args.concesion}.html").write_text(pagina(cuerpo), encoding="utf-8")
+    (RAIZ / "index.html").write_text(pagina(pagina_concesiones()), encoding="utf-8")
+    (RAIZ / "concesiones.html").write_text(REDIRIGE_PORTADA, encoding="utf-8")
+
+
+# concesiones.html fue la portada antes de que index.html la reemplazara: se mantiene para no romper enlaces
+REDIRIGE_PORTADA = ("<!doctype html>\n<html lang=\"es\">\n<head>\n<meta charset=\"utf-8\">\n"
+                    "<meta http-equiv=\"refresh\" content=\"0; url=./\">\n<title>Concesiones · Árbol de nodos</title>\n"
+                    "</head>\n<body>\n<p><a href=\"./\">Ir a la lista de concesiones</a></p>\n</body>\n</html>\n")
 
 
 def pagina_concesiones() -> str:
-    """concesiones.html: una tarjeta por concesión de data/ con enlace relativo a su visor (RITP → index.html,
-    las demás → salida/visor_<ID>.html), para que funcione igual en GitHub Pages que abriendo el archivo."""
+    """Portada (index.html): una tarjeta por concesión de data/ con enlace relativo a su visor
+    (salida/visor_<ID>.html), para que funcione igual en GitHub Pages que abriendo el archivo. Los enlaces antiguos
+    a un nodo de RITP en la raíz (`#n123`) se redirigen a su visor."""
     import html
     esc = lambda x: html.escape(str(x), quote=True)
     tarjetas = []
@@ -706,7 +712,7 @@ def pagina_concesiones() -> str:
         rutas = [d / "nodos_versionados.json"] + sorted((d / "versiones").glob("*/nodos_versionados.json"))
         arboles = [json.loads(r.read_text(encoding="utf-8")) for r in rutas]
         ultimo = max(arboles, key=lambda a: a.get("generado") or "")
-        enlace = "index.html" if cid == "RITP" else f"salida/visor_{cid}.html"
+        enlace = f"salida/visor_{cid}.html"
         if not (RAIZ / enlace).exists():
             continue
         sufijo = "" if ultimo is arboles[0] else "_" + rutas[arboles.index(ultimo)].parent.name
@@ -723,6 +729,7 @@ def pagina_concesiones() -> str:
             + (f'<span class="dato">Grafo: {grafo}</span>' if grafo else "")
             + f'<span class="ir">Abrir el grafo →</span></a>')
     return f"""<title>Concesiones · Árbol de nodos</title>
+<script>if (/^#n\\d+$/.test(location.hash)) location.replace("salida/visor_RITP.html" + location.hash);</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
