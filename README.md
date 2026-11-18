@@ -84,6 +84,22 @@ La pestaña **Indicadores** resume la red con todos los actos y muestra entre pa
 | Capítulos más modificados | Versiones creadas por actos posteriores a las Bases |
 | Temas de los actos posteriores | Fragmentos agrupados por tema (obras, régimen económico, tarifas…) |
 
+### Antes y después
+
+La pestaña **Antes y después** compara la concesión con dos conjuntos de actos aplicados sobre las Bases, por ejemplo **con y sin las circulares aclaratorias** (lo que abre por defecto), solo las Bases contra todos los actos, o la evolución **hasta un acto dado**.
+- **Escenarios:** cada lado se elige en una lista (solo las Bases, todos los actos, sin un tipo de acto, Bases más solo un tipo, hasta un acto) o acto por acto en «Elegir los actos uno a uno».
+- **Regla:** un nodo existe si el acto de su versión más antigua está incluido, ningún acto incluido lo elimina y su padre existe. Cada texto toma la versión del acto incluido más tardío. Una relación propia de un acto (modifica, ubica, cita desde un acto, procedencia) existe si su acto está incluido; todas, si existen sus dos nodos.
+- **Qué muestra:**
+  - una tabla de cifras antes, después y cambio (nodos, relaciones, artículos, incisos, notas de actos, textos con versión de un acto, modificaciones, citas);
+  - los actos que explican la diferencia;
+  - los textos que cambian, con «Ver cambio» (palabra por palabra, contra la versión más parecida del otro escenario);
+  - los nodos que aparecen y desaparecen;
+  - los capítulos con más diferencias;
+  - cómo se mueven los artículos más citados y los más centrales.
+- **Ver en el grafo:** dibuja el escenario Antes, el Después o las Diferencias (los dos juntos, con lo que cambia resaltado). La ficha de un nodo muestra entonces el texto vigente en ese escenario. «Volver a todos los actos» deja el grafo como siempre.
+
+Si se quita un acto cuyo texto otro acto incluido volvió a modificar, el texto queda como lo dejó el acto incluido: el árbol no guarda cómo se habría aplicado sobre el texto anterior.
+
 ### Grupos, similares y segmentación local
 
 - **Pestaña Grupos.** Muestra grupos de artículos que se citan entre sí o hablan de lo mismo. Se detectan con comunidades Louvain sobre las citas y la similitud de contenido, con resolución 1,3 (`--resolucion`).

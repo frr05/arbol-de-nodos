@@ -128,6 +128,20 @@ select { width: 100%; font: 13px var(--f-ui); color: var(--ink); background: var
 .fila .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fila .nm b { font-family: var(--f-mono); font-weight: 500; margin-right: 6px; }
 .fila .vl { font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; white-space: nowrap; }
+/* pestaña Antes y después */
+.pestanas button { line-height: 1.2; }
+.ad-esc { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0 0 8px; }
+.ad-esc label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; font-weight: 600; color: var(--ink-2); }
+.ad-tabla { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; margin: 4px 0 6px; }
+.ad-tabla th { font-size: 11px; font-weight: 600; color: var(--muted); text-align: right; padding: 3px 4px; border-bottom: 1px solid var(--line); }
+.ad-tabla th:first-child, .ad-tabla td:first-child { text-align: left; }
+.ad-tabla td { padding: 4px; text-align: right; border-bottom: 1px solid var(--line); }
+.ad-tabla td.mas { color: var(--c3); font-weight: 600; } .ad-tabla td.menos { color: var(--c8); font-weight: 600; }
+.ad-actos td { padding: 3px 4px; } .ad-actos td:first-child { max-width: 0; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ad-actos input { margin: 0; }
+.ad-dif { font-family: var(--f-text); font-size: 14px; line-height: 1.5; background: var(--bg); border-radius: 6px; padding: 8px 10px; margin: 2px 0 8px; white-space: pre-wrap; }
+.ad-dif .rot { display: block; font: 600 11px var(--f-ui); color: var(--muted); letter-spacing: .04em; text-transform: uppercase; margin-top: 4px; }
+.franja.esc { top: auto; bottom: 12px; right: auto; max-width: calc(100% - 24px); }
 .fila .vl small { color: var(--muted); font-weight: 500; margin-left: 4px; }
 .fila .barra { grid-column: 2 / 4; height: 5px; border-radius: 3px; background: var(--chip); overflow: hidden; }
 .fila .barra i { display: block; height: 100%; border-radius: 3px; background: var(--bar); }
@@ -242,6 +256,10 @@ body.con-lector { overflow: hidden; }
       <label><input type="checkbox" id="c-evitar"> Evitar jerarquía</label>
       <button class="btn" type="button" id="b-ruta-cancelar">Cancelar</button>
     </div>
+    <div class="franja esc" id="franja-esc" hidden>
+      <span id="esc-txt"></span>
+      <button class="btn" type="button" id="b-esc-todo">Volver a todos los actos</button>
+    </div>
     <div class="punta" id="punta" hidden></div>
   </div>
   <div class="lector-fondo" id="lector" hidden>
@@ -264,6 +282,7 @@ body.con-lector { overflow: hidden; }
     <div class="pestanas" role="tablist">
       <button id="t-ficha" role="tab" aria-selected="true" type="button">Nodo</button>
       <button id="t-ind" role="tab" aria-selected="false" type="button">Indicadores</button>
+      <button id="t-ad" role="tab" aria-selected="false" type="button">Antes y después</button>
       <button id="t-grp" role="tab" aria-selected="false" type="button">Grupos</button>
       <button id="t-ari" role="tab" aria-selected="false" type="button">Aristas</button>
       <button id="t-filtros" role="tab" aria-selected="false" type="button">Filtros</button>
@@ -277,6 +296,7 @@ body.con-lector { overflow: hidden; }
       <div id="ficha" class="ficha"></div>
     </div>
     <div class="cuerpo" id="p-ind" role="tabpanel" hidden><div id="indicadores"></div></div>
+    <div class="cuerpo" id="p-ad" role="tabpanel" hidden><div id="antes-despues"></div></div>
     <div class="cuerpo" id="p-grp" role="tabpanel" hidden><div id="grupos"></div></div>
     <div class="cuerpo" id="p-ari" role="tabpanel" hidden>
       <section class="indicador" id="ari-inter"></section>
@@ -357,6 +377,7 @@ const cv = $("cv"), ctx = cv.getContext("2d");
 let W = 0, H = 0, dpr = 1;
 const vista = { s: 1, x: 0, y: 0 };      // pantalla = mundo * escala * s + desplazamiento
 let hastaK = ACTOS.length - 1;
+let escVista = null, vivoVista = null;    // pestaña Antes y después: actos con que se dibuja el grafo (null = todos)
 let posOriginal = null;          // posiciones antes de islas o árbol; se restauran al apagar ambos
 let arbol = null;                // vista de árbol: { porGrupos, raizSub, sub, virtuales, aristasV, nivel, rmax }
 let rutaModo = null;
@@ -394,9 +415,13 @@ const rPantalla = i => {
   if (arbol && arbol.forma === "planeta" && arbol.hoja) return (arbol.hoja.has(i) ? 1.5 : Math.min(radio[i], 3 + Math.sqrt(arbol.satelites.get(i) || 0) * .45)) * z;
   return radio[i] * z;
 };
-const existe = i => N[i].o <= hastaK && (N[i].h === undefined || N[i].h > hastaK);
+const existe = i => vivoVista ? vivoVista[i] === 1 : N[i].o <= hastaK && (N[i].h === undefined || N[i].h > hastaK);
+const actoEnVista = a => escVista ? escVista.has(a) : a <= hastaK;
+// en un escenario, las relaciones propias de un acto dependen de él; las demás (jerarquía, citas), de sus dos nodos
+const PROPIAS = new Set(["modifica", "ubica", "cita_acto", "procedencia"]);
+const aristaEnVista = e => escVista ? (!PROPIAS.has(e[2]) || escVista.has(e[4])) : e[4] <= hastaK;
 const nodoVisible = i => visibleTipo[N[i].k] && existe(i) && (!arbol || !arbol.sub || arbol.sub.has(i));
-const aristaVisible = k => visibleArista[E[k][2]] && E[k][4] <= hastaK && nodoVisible(E[k][0]) && nodoVisible(E[k][1]);
+const aristaVisible = k => visibleArista[E[k][2]] && aristaEnVista(E[k]) && nodoVisible(E[k][0]) && nodoVisible(E[k][1]);
 
 function encuadrar(indices) {
   const xs = indices.map(i => N[i].x), ys = indices.map(i => N[i].y);
@@ -453,7 +478,7 @@ function dibujar() {
       let hay = false;
       for (let k = 0; k < E.length; k++) {
         const e = E[k];
-        if (e[2] !== tipo || e[4] > hastaK || !nodoVisible(e[0]) || !nodoVisible(e[1])) continue;
+        if (e[2] !== tipo || !aristaEnVista(e) || !nodoVisible(e[0]) || !nodoVisible(e[1])) continue;
         const dentro = islas2 ? (N[e[0]].ga !== undefined && N[e[0]].ga === N[e[1]].ga)
           : !foco || (sel >= 0 ? (e[0] === sel || e[1] === sel) : (foco.has(e[0]) && foco.has(e[1])));
         if ((pasada === 1) !== dentro && (foco || islas2)) continue;
@@ -745,14 +770,30 @@ function centrar(i) {
 }
 function versionALaFecha(n) {
   if (!n.v || !n.v.length) return null;
+  if (escVista) return versionEn(n, escVista);
   let r = null;
   for (const v of n.v) if (v[0] <= hastaK && v[1] !== "eliminado" && v[1] !== "elimina") r = v;
   return r;
 }
 function textoALaFecha(n) {
+  if (escVista) return textoEn(n, escVista);
   const v = versionALaFecha(n);
   if (!v || hastaK === ACTOS.length - 1) return n.tx || "";
   return v[4] || n.tx || "";
+}
+// versión de un nodo en un escenario (conjunto de actos): la del acto incluido más tardío; la lista de versiones no
+// viene en orden y un inciso que une varios párrafos trae una versión por trozo
+const esElimV = v => v[1] === "eliminado" || v[1] === "elimina";
+function versionEn(n, S) {
+  let r = null;
+  for (const v of n.v || []) if (S.has(v[0]) && !esElimV(v) && (!r || v[0] > r[0] || (v[0] === r[0] && v[3]))) r = v;
+  return r;
+}
+function textoEn(n, S) {
+  const v = versionEn(n, S);
+  if (!v || v[3]) return n.tx || (v && v[4]) || "";
+  if (v[0] === 0) { const o = n.v.filter(x => x[0] === 0 && !esElimV(x) && x[4]).map(x => x[4]); if (o.length > 1) return o.join("\n"); }
+  return v[4] || "";
 }
 function ficha() {
   const caja = $("ficha");
@@ -779,11 +820,12 @@ function ficha() {
     ${tieneTexto(sel) ? `<button class="btn b-leer" type="button" id="b-leer">Leer texto completo${cuentaCambios(sel) ? ` · ${cuentaCambios(sel)} cambio${cuentaCambios(sel) > 1 ? "s" : ""}` : ""}</button>` : ""}
     <dl class="meta">${meta.map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join("")}</dl>
     ${textoALaFecha(n) ? `<div class="texto">${esc(textoALaFecha(n))}</div>` : ""}`;
-  if (!existe(sel) && n.h !== undefined) h = `<p class="vacio">Este texto fue eliminado por ${esc((ACTOS[n.h] || {}).c)}.</p>` + h;
+  if (!existe(sel) && escVista) h = `<p class="vacio">Este nodo no existe en el escenario que muestra el grafo (pestaña Antes y después).</p>` + h;
+  else if (!existe(sel) && n.h !== undefined) h = `<p class="vacio">Este texto fue eliminado por ${esc((ACTOS[n.h] || {}).c)}.</p>` + h;
   if (n.v && n.v.length) {
-    h += `<h3>Versiones (${n.v.length})</h3>` + n.v.map(v => `<div class="version${v[0] > hastaK ? " post" : ""}"><div class="cab">
+    h += `<h3>Versiones (${n.v.length})</h3>` + n.v.map(v => `<div class="version${!actoEnVista(v[0]) ? " post" : ""}"><div class="cab">
       <span>${esc((ACTOS[v[0]] || {}).c || "—")}</span><span class="etq">${esc(OPS[v[1]] || v[1])}</span>
-      <span class="etq">${esc(v[2])}</span>${v === versionALaFecha(n) ? '<span class="etq vig">vigente a la fecha</span>' : v[0] > hastaK ? '<span class="etq">posterior</span>' : ""}</div>
+      <span class="etq">${esc(v[2])}</span>${v === versionALaFecha(n) ? `<span class="etq vig">${escVista ? "vigente en el escenario" : "vigente a la fecha"}</span>` : !actoEnVista(v[0]) ? `<span class="etq">${escVista ? "fuera del escenario" : "posterior"}</span>` : ""}</div>
       ${v[4] ? `<p>${esc(v[4])}</p>` : ""}</div>`).join("");
   }
   if (n.sim && n.sim.length) {
@@ -1059,16 +1101,18 @@ function selectorActos() {
 let pestana = "ficha";
 function mostrarPestana(p) {
   pestana = p;
-  for (const [t, c] of [["ficha", "t-ficha"], ["ind", "t-ind"], ["grp", "t-grp"], ["ari", "t-ari"], ["filtros", "t-filtros"]]) {
+  for (const [t, c] of [["ficha", "t-ficha"], ["ind", "t-ind"], ["ad", "t-ad"], ["grp", "t-grp"], ["ari", "t-ari"], ["filtros", "t-filtros"]]) {
     $(c).setAttribute("aria-selected", String(p === t)); $("p-" + t).hidden = p !== t;
   }
   if (p === "ind") indicadores();
+  if (p === "ad") antesDespues();
   if (p === "grp") panelGrupos();
   if (p === "ari") panelAristas();
 }
 $("t-ficha").onclick = () => mostrarPestana("ficha");
 $("t-filtros").onclick = () => mostrarPestana("filtros");
 $("t-ind").onclick = () => mostrarPestana("ind");
+$("t-ad").onclick = () => mostrarPestana("ad");
 $("t-grp").onclick = () => mostrarPestana("grp");
 $("t-ari").onclick = () => mostrarPestana("ari");
 function modo(m) {
@@ -1695,8 +1739,11 @@ E.forEach(e => { if (e[2] === "jerarquia") padreDe[e[1]] = e[0]; });
 const articuloDe = N.map((_, i) => { let x = i, n = 0; while (x >= 0 && N[x].k !== "articulo" && n++ < 12) x = padreDe[x]; return x >= 0 && N[x].k === "articulo" ? x : -1; });
 const idxNodo = new Map(N.map((n, i) => [n.i, i]));
 const nodoActo = ACTOS.map(a => idxNodo.get(a.i));
-function calcular(k) {
-  const vivo = i => N[i].o <= k && (N[i].h === undefined || N[i].h > k);
+function calcular(k, S = null) {          // S: conjunto de actos de un escenario (pestaña Antes y después); sin S, los actos 0…k
+  const en = S ? (a => S.has(a)) : (a => a <= k);
+  const enArista = S ? (e => !PROPIAS.has(e[2]) || S.has(e[4])) : (e => e[4] <= k);
+  const vivos = S ? vivosDe(S) : null;
+  const vivo = S ? (i => vivos[i] === 1) : (i => N[i].o <= k && (N[i].h === undefined || N[i].h > k));
   const arts = N.map((n, i) => i).filter(i => N[i].k === "articulo" && vivo(i));
   const citas = new Map(), citasActo = new Map(), desdeCaps = new Map(), desdeActos = new Map(), totalCap = new Map();
   const red = new Map();                    // red de artículos y actos para la centralidad
@@ -1704,7 +1751,7 @@ function calcular(k) {
   const actoMods = ACTOS.map(() => ({ caps: new Set(), mods: 0, menc: 0, ubica: 0 }));
   const capMods = new Map(), artsMod = new Set();
   for (const e of E) {
-    if (e[4] > k || !vivo(e[0]) || !vivo(e[1])) continue;
+    if (!enArista(e) || !vivo(e[0]) || !vivo(e[1])) continue;
     const [s, t, tipo] = e;
     if (tipo === "cita") {
       citas.set(t, (citas.get(t) || 0) + 1); unir(s, t);
@@ -1727,7 +1774,7 @@ function calcular(k) {
       } else actoMods[a].ubica++;
     }
   }
-  N.forEach((n, i) => { if (vivo(i) && n.o > 0 && n.o <= k && n.g !== undefined && ["acto_posterior", "instruccion", "aclaracion", "tabla"].includes(n.k)) actoMods[n.o].caps.add(n.g); });
+  N.forEach((n, i) => { if (vivo(i) && n.o > 0 && en(n.o) && n.g !== undefined && ["acto_posterior", "instruccion", "aclaracion", "tabla"].includes(n.k)) actoMods[n.o].caps.add(n.g); });
   // centralidad: cercanía (Wasserman-Faust) y PageRank sobre la red de artículos y actos
   const vs = [...red.keys()], n = vs.length;
   const cerca = new Map(), pr = new Map();
@@ -1747,11 +1794,11 @@ function calcular(k) {
   }
   const rankPR = new Map([...pr.entries()].sort((a, b) => b[1] - a[1]).map(([v], r) => [v, r + 1]));
   const temas = N.map((n, i) => i).filter(i => N[i].k === "tema" && vivo(i)).map(i => {
-    const hijos = E.filter(e => e[2] === "jerarquia" && e[0] === i && e[4] <= k && vivo(e[1])).map(e => e[1]);
+    const hijos = E.filter(e => e[2] === "jerarquia" && e[0] === i && enArista(e) && vivo(e[1])).map(e => e[1]);
     return { i, v: hijos.length, actos: new Set(hijos.map(h => N[h].a).filter(a => a !== undefined)).size };
   });
   return { k, arts, citas, citasActo, desdeCaps, desdeActos, totalCap, actoMods, capMods, artsMod, cerca, pr, rankPR, temas,
-    nodos: N.reduce((a, _, i) => a + (vivo(i) ? 1 : 0), 0), rel: E.reduce((a, e) => a + (e[4] <= k && vivo(e[0]) && vivo(e[1]) ? 1 : 0), 0) };
+    nodos: N.reduce((a, _, i) => a + (vivo(i) ? 1 : 0), 0), rel: E.reduce((a, e) => a + (enArista(e) && vivo(e[0]) && vivo(e[1]) ? 1 : 0), 0) };
 }
 let base = null;
 const nfmt = (x, d = 0) => x.toLocaleString("es-CL", { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -1801,6 +1848,228 @@ function indicadores() {
     const i = +bt.dataset.i; if (!(i >= 0)) return;
     if (!visibleTipo[N[i].k]) { visibleTipo[N[i].k] = true; filtros(); }
     seleccionar(i); centrar(i);
+  }));
+}
+
+// ---------- antes y después: la concesión con dos conjuntos de actos sobre las Bases ----------
+// Un nodo existe en un escenario si el acto de su versión más antigua está incluido, ningún acto incluido lo elimina y su
+// padre existe; cada texto toma la versión del acto incluido más tardío. Una relación propia de un acto (modifica,
+// ubica, cita desde un acto, procedencia) existe si su acto está incluido; todas, si sus dos nodos existen.
+// acto en que nace cada nodo para los escenarios: el de su versión más antigua (la lista de versiones trae primero
+// la vigente, así que N[i].o daría el acto que modificó un inciso de las Bases, no las Bases)
+const nace = N.map(n => n.v && n.v.length ? Math.min(...n.v.map(v => v[0])) : n.o);
+function vivosDe(S) {
+  const v = new Int8Array(N.length).fill(-1);
+  const f = i => {
+    if (v[i] >= 0) return v[i];
+    v[i] = 0;                                        // corta ciclos
+    const n = N[i];
+    let ok = S.has(nace[i]) && !(n.h !== undefined && S.has(n.h));
+    const pa = padreDe[i];
+    // como en el grafo completo: la nota de un acto sobre un texto que otro acto incluido eliminó sigue a la vista
+    if (ok && pa >= 0 && f(pa) !== 1) ok = ["instruccion", "aclaracion", "acto_posterior", "tabla"].includes(n.k) && S.has(nace[pa]);
+    return (v[i] = ok ? 1 : 0);
+  };
+  for (let i = 0; i < N.length; i++) f(i);
+  return v;
+}
+// versiones de actos que están en un solo escenario; cada una se compara con la versión más parecida del otro
+const versionesDif = n => (n.v || []).filter(v => v[0] > 0 && adA.has(v[0]) !== adB.has(v[0]));
+const palabrasV = s => new Set((s || "").toLowerCase().split(/\s+/).slice(0, 80));
+function parecido(a, b) { const A = palabrasV(a), B = palabrasV(b); let c = 0; A.forEach(w => { if (B.has(w)) c++; }); return c / Math.max(1, A.size + B.size - c); }
+function parejaDe(n, v) {
+  const otro = adA.has(v[0]) ? adB : adA;
+  let mejor = null, p = -1;
+  for (const u of n.v) if (u !== v && !esElimV(u) && otro.has(u[0])) { const q = parecido(u[4], v[4]); if (q > p) { p = q; mejor = u; } }
+  return mejor;
+}
+const tipoActo = a => a.tipo || "otro";
+const mayus = t => t.charAt(0).toUpperCase() + t.slice(1);
+const TIPOS_ACTO = [...new Set(ACTOS.slice(1).map(tipoActo))];
+const nomActo = k => `${ACTOS[k].c}${ACTOS[k].f ? " · " + ACTOS[k].f : ""}`;
+function presetsEsc() {
+  const p = [["bases", "Solo las Bases"], ["todos", `Todos los actos (${ACTOS.length - 1})`]];
+  for (const t of TIPOS_ACTO) {
+    const n = ACTOS.filter((a, k) => k > 0 && tipoActo(a) === t).length;
+    if (TIPOS_ACTO.length > 1 || n < ACTOS.length - 1) p.push(["sin:" + t, `Sin ${mayus(t)} (${n})`]);
+    if (TIPOS_ACTO.length > 1) p.push(["solo:" + t, `Bases + solo ${mayus(t)} (${n})`]);
+  }
+  for (let k = 1; k < ACTOS.length - 1; k++) p.push(["hasta:" + k, `Hasta ${nomActo(k)}`]);
+  p.push(["pers", "Personalizado"]);
+  return p;
+}
+function conjuntoEsc(clave) {
+  const S = new Set([0]);
+  ACTOS.forEach((a, k) => {
+    if (!k) return;
+    const t = tipoActo(a);
+    if (clave === "todos" || (clave.startsWith("sin:") && t !== clave.slice(4)) || (clave.startsWith("solo:") && t === clave.slice(5))
+        || (clave.startsWith("hasta:") && k <= +clave.slice(6))) S.add(k);
+  });
+  return S;
+}
+const tipoCircular = TIPOS_ACTO.find(t => /circular/i.test(t));
+let adClaveA = tipoCircular ? "sin:" + tipoCircular : "bases", adClaveB = "todos";
+let adA = conjuntoEsc(adClaveA), adB = conjuntoEsc(adClaveB), adVer = "todo", adRes = null, adClaveRes = "", adTodos = {};
+function resultadoEsc() {
+  const clave = [...adA].sort((x, y) => x - y).join(",") + "|" + [...adB].sort((x, y) => x - y).join(",");
+  if (adRes && adClaveRes === clave) return adRes;
+  const vA = vivosDe(adA), vB = vivosDe(adB);
+  const aparecen = [], desaparecen = [], cambian = [];
+  N.forEach((n, i) => {
+    const a = vA[i] === 1, b = vB[i] === 1;
+    if (!a && b) aparecen.push(i);
+    else if (a && !b) desaparecen.push(i);
+    else if (a && b && n.v && n.v.length) { const difs = versionesDif(n).filter(v => !esElimV(v)); if (difs.length) cambian.push({ i, difs }); }
+  });
+  adClaveRes = clave;
+  return (adRes = { vA, vB, cA: calcular(ULT, adA), cB: calcular(ULT, adB), aparecen, desaparecen, cambian });
+}
+function nombreEsc(l) {
+  const clave = l === "a" ? adClaveA : adClaveB, S = l === "a" ? adA : adB;
+  const p = presetsEsc().find(x => x[0] === clave);
+  return clave === "pers" ? `Bases + ${S.size - 1} actos elegidos` : p ? p[1] : "";
+}
+function verEsc(m) {
+  adVer = m;
+  if (m === "todo") { escVista = null; vivoVista = null; resalte = null; }
+  else {
+    const r = resultadoEsc();
+    escVista = m === "a" ? adA : m === "b" ? adB : new Set([...adA, ...adB]);
+    vivoVista = m === "a" ? r.vA : m === "b" ? r.vB : r.vA.map((x, i) => (x === 1 || r.vB[i] === 1) ? 1 : 0);
+    resalte = m === "dif" ? new Set([...r.aparecen, ...r.desaparecen, ...r.cambian.map(c => c.i)]) : null;
+  }
+  sel = -1; capResaltado = -1; marcarLeyenda(); $("f-acto").value = ""; ficha(); refrescar();
+  if (resalte && resalte.size) { const vis = [...resalte].filter(nodoVisible); if (vis.length) encuadrar(vis); }
+  const fr = $("franja-esc");
+  fr.hidden = m === "todo";
+  if (m !== "todo") {
+    const r = resultadoEsc();
+    $("esc-txt").textContent = m === "dif"
+      ? `Diferencias: ${nfmt(r.aparecen.length)} aparecen, ${nfmt(r.desaparecen.length)} desaparecen y ${nfmt(r.cambian.length)} cambian de texto (resaltados)`
+      : `Grafo ${m === "a" ? "Antes" : "Después"}: ${nombreEsc(m)} · ${nfmt(m === "a" ? r.cA.nodos : r.cB.nodos)} nodos`;
+  }
+  document.querySelectorAll("#antes-despues [data-ver]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.ver === m)));
+  sucio = true;
+}
+$("b-esc-todo").onclick = () => verEsc("todo");
+function irANodo(i) {
+  if (!(i >= 0)) return;
+  if (!existe(i) && adVer !== "todo") verEsc("dif");
+  if (!visibleTipo[N[i].k]) { visibleTipo[N[i].k] = true; filtros(); }
+  seleccionar(i); centrar(i);
+}
+function antesDespues() {
+  const caja = $("antes-despues");
+  const abierto = !!caja.querySelector("#ad-pers[open]");
+  const r = resultadoEsc(), { cA, cB } = r;
+  const opciones = sel => presetsEsc().map(([v, t]) => `<option value="${esc(v)}"${v === sel ? " selected" : ""}>${esc(t)}</option>`).join("");
+  const cuenta = (viv, pred) => N.reduce((s, n, i) => s + (viv[i] === 1 && pred(n) ? 1 : 0), 0);
+  const cuentaE = (S, viv, tipo) => E.reduce((s, e) => s + (e[2] === tipo && (!PROPIAS.has(e[2]) || S.has(e[4])) && viv[e[0]] === 1 && viv[e[1]] === 1 ? 1 : 0), 0);
+  const modTexto = (S, viv) => N.reduce((s, n, i) => s + (viv[i] === 1 && (n.v || []).some(v => v[0] > 0 && S.has(v[0]) && !esElimV(v)) ? 1 : 0), 0);
+  const filas = [
+    ["Nodos", cA.nodos, cB.nodos], ["Relaciones", cA.rel, cB.rel],
+    ["Artículos", cuenta(r.vA, n => n.k === "articulo"), cuenta(r.vB, n => n.k === "articulo")],
+    ["Incisos (párrafos)", cuenta(r.vA, n => n.k === "inciso"), cuenta(r.vB, n => n.k === "inciso")],
+    ["Aclaraciones, instrucciones y actos posteriores", cuenta(r.vA, n => ["aclaracion", "instruccion", "acto_posterior"].includes(n.k)), cuenta(r.vB, n => ["aclaracion", "instruccion", "acto_posterior"].includes(n.k))],
+    ["Textos con versión de un acto", modTexto(adA, r.vA), modTexto(adB, r.vB)],
+    ["Artículos modificados por actos", cA.artsMod.size, cB.artsMod.size],
+    ["Modificaciones", cuentaE(adA, r.vA, "modifica"), cuentaE(adB, r.vB, "modifica")],
+    ["Citas entre artículos", cuentaE(adA, r.vA, "cita"), cuentaE(adB, r.vB, "cita")],
+    ["Citas desde actos", cuentaE(adA, r.vA, "cita_acto"), cuentaE(adB, r.vB, "cita_acto")]];
+  let h = `<section class="indicador" style="margin-top:0"><h3>Antes y después</h3>
+    <p class="expl">Compara la concesión con dos conjuntos de actos aplicados sobre las Bases: por ejemplo, con y sin las circulares aclaratorias, o hasta un acto dado. Un nodo existe si el acto de su versión más antigua está incluido, ningún acto incluido lo elimina y su padre existe; cada texto toma la versión del acto incluido más tardío.</p>
+    <div class="ad-esc"><label>Antes<select id="ad-a">${opciones(adClaveA)}</select></label><label>Después<select id="ad-b">${opciones(adClaveB)}</select></label></div>
+    <details class="grupo-con" id="ad-pers"${abierto ? " open" : ""}><summary>Elegir los actos uno a uno <span class="n">${adA.size - 1} · ${adB.size - 1}</span></summary>
+    <table class="ad-tabla ad-actos"><thead><tr><th>Acto</th><th>Antes</th><th>Después</th></tr></thead><tbody>
+    ${ACTOS.map((a, k) => `<tr><td title="${esc(a.n)}">${esc(nomActo(k))}</td>
+      <td><input type="checkbox" data-l="a" data-k="${k}" aria-label="${esc(a.c)} en Antes"${adA.has(k) ? " checked" : ""}${k ? "" : " disabled"}></td>
+      <td><input type="checkbox" data-l="b" data-k="${k}" aria-label="${esc(a.c)} en Después"${adB.has(k) ? " checked" : ""}${k ? "" : " disabled"}></td></tr>`).join("")}
+    </tbody></table></details>
+    <h3>Ver en el grafo</h3>
+    <div class="nav"><span class="segmento" role="group" aria-label="Escenario del grafo">${[["todo", "Todos los actos"], ["a", "Antes"], ["b", "Después"], ["dif", "Diferencias"]]
+      .map(([v, t]) => `<button class="btn" type="button" data-ver="${v}" aria-pressed="${adVer === v}">${t}</button>`).join("")}</span></div></section>`;
+  if ([...adA].sort().join() === [...adB].sort().join()) {
+    caja.innerHTML = h + `<p class="vacio">Los dos escenarios tienen los mismos actos: elige otro en Antes o en Después.</p>`;
+    enlazarAD(caja); return;
+  }
+  h += `<table class="ad-tabla"><thead><tr><th></th><th>Antes</th><th>Después</th><th>Cambio</th></tr></thead><tbody>` +
+    filas.map(([t, a, b]) => `<tr><td>${t}</td><td>${nfmt(a)}</td><td>${nfmt(b)}</td><td class="${b > a ? "mas" : b < a ? "menos" : ""}">${b === a ? "=" : (b > a ? "+" : "") + nfmt(b - a)}</td></tr>`).join("") + `</tbody></table>`;
+  // actos que explican la diferencia
+  const soloA = [...adA].filter(k => !adB.has(k)), soloB = [...adB].filter(k => !adA.has(k));
+  const efecto = k => r.aparecen.filter(i => nace[i] === k).length + r.desaparecen.filter(i => nace[i] === k || N[i].h === k).length
+    + r.cambian.filter(c => c.difs.some(v => v[0] === k)).length;
+  h += tarjeta("Actos que explican la diferencia", "Actos que están en un solo escenario y cuántos nodos aparecen, desaparecen o cambian de texto por ellos.",
+    [...soloA.map(k => [k, "solo en Antes"]), ...soloB.map(k => [k, "solo en Después"])].map(([k, s]) => ({ k, s, v: efecto(k) })).sort((x, y) => y.v - x.v)
+      .map(({ k, s, v }) => ({ i: nodoActo[k], v, nom: esc(nomActo(k)), sub: s })));
+  // textos que cambian, nodos que aparecen y desaparecen
+  const actoV = x => !x ? "—" : `${(ACTOS[x[0]] || {}).c || "—"}${x[0] ? " · " + (OPS[x[1]] || x[1]) : ""}`;
+  const difTxt = c => [...new Set(c.difs.map(v => `${actoV(v)} (solo ${adB.has(v[0]) ? "después" : "antes"})`))].join(", ");
+  const lista = (clave, items, fila) => {
+    const todos = adTodos[clave], ver = todos ? items : items.slice(0, 60);
+    return ver.map(fila).join("") + (items.length > ver.length ? `<button class="btn" type="button" data-todos="${clave}" style="margin-top:6px">Mostrar los ${nfmt(items.length)}</button>` : "");
+  };
+  const filaN = (i, sub) => `<button class="fila" type="button" data-i="${i}"><span class="rk">${marca(i)}</span><span class="nm">${nomNodo(i)}</span><span class="vl"></span><span class="sub">${sub}</span></button>`;
+  const porTipo = idx => { const c = new Map(); idx.forEach(i => c.set(N[i].k, (c.get(N[i].k) || 0) + 1));
+    return [...c.entries()].sort((x, y) => y[1] - x[1]).map(([k, n]) => `<span class="etq">${esc((TIPOS[k] || [k])[0])} ${nfmt(n)}</span>`).join(" "); };
+  const ordenNodos = idx => [...idx].sort((x, y) => (TEXTUALES.has(N[x].k) || ESTRUCTURA.has(N[x].k) ? 0 : 1) - (TEXTUALES.has(N[y].k) || ESTRUCTURA.has(N[y].k) ? 0 : 1) || x - y);
+  h += `<section class="indicador"><h3>Textos que cambian (${nfmt(r.cambian.length)})</h3><p class="expl">Nodos que existen en los dos escenarios y tienen versiones de actos que están en uno solo. «Ver cambio» compara cada una, palabra por palabra, con la versión más parecida del otro escenario.</p>` +
+    (r.cambian.length ? lista("cambian", r.cambian, (c, j) => filaN(c.i, esc(difTxt(c))) +
+      `<details class="grupo-con" data-dif="${j}"><summary>Ver cambio</summary><div class="ad-dif"></div></details>`) : `<p class="vacio">Ninguno.</p>`) + `</section>`;
+  h += `<section class="indicador"><h3>Nodos que aparecen (${nfmt(r.aparecen.length)})</h3><p class="expl">Existen en Después y no en Antes. ${porTipo(r.aparecen)}</p>` +
+    (r.aparecen.length ? lista("aparecen", ordenNodos(r.aparecen), i => filaN(i, `${esc((TIPOS[N[i].k] || [N[i].k])[0])} · desde ${esc((ACTOS[nace[i]] || {}).c || "—")}`)) : `<p class="vacio">Ninguno.</p>`) + `</section>`;
+  h += `<section class="indicador"><h3>Nodos que desaparecen (${nfmt(r.desaparecen.length)})</h3><p class="expl">Existen en Antes y no en Después. ${porTipo(r.desaparecen)}</p>` +
+    (r.desaparecen.length ? lista("desaparecen", ordenNodos(r.desaparecen), i => filaN(i, `${esc((TIPOS[N[i].k] || [N[i].k])[0])} · ${r.vB[i] !== 1 && N[i].h !== undefined && adB.has(N[i].h) ? "eliminado por " + esc((ACTOS[N[i].h] || {}).c) : "desde " + esc((ACTOS[nace[i]] || {}).c || "—")}`)) : `<p class="vacio">Ninguno.</p>`) + `</section>`;
+  // capítulos y rankings comparados
+  const porCap = new Map();
+  [...r.aparecen, ...r.desaparecen, ...r.cambian.map(c => c.i)].forEach(i => { const g = N[i].g; if (g !== undefined) porCap.set(g, (porCap.get(g) || 0) + 1); });
+  h += tarjeta("Capítulos con más diferencias", "Nodos del capítulo que aparecen, desaparecen o cambian de texto entre los dos escenarios.",
+    [...porCap.entries()].sort((x, y) => y[1] - x[1]).slice(0, 12).map(([g, v]) => ({ i: idxNodo.get(CAPS[g].i), v, nom: esc(capCorto(CAPS[g])) })));
+  const puesto = (val, cands) => new Map(cands.filter(i => val(i) > 0).sort((x, y) => val(y) - val(x)).map((i, k) => [i, k + 1]));
+  const mov = (pa, pb) => pa === undefined ? "<small>(nuevo)</small>" : pa === pb ? "<small>(=)</small>" : `<small>(${pa > pb ? "↑" : "↓"}${Math.abs(pa - pb)})</small>`;
+  const citas = c => i => (c.citas.get(i) || 0) + (c.citasActo.get(i) || 0);
+  const pA = puesto(citas(cA), cA.arts), pB = puesto(citas(cB), cB.arts);
+  h += tarjeta("Artículos más citados, después", "Puesto en Después y, entre paréntesis, cuántos puestos sube o baja respecto de Antes. Debajo, las citas antes → después.",
+    [...pB.entries()].slice(0, 12).map(([i, p]) => ({ i, v: citas(cB)(i), nom: nomNodo(i), d: mov(pA.get(i), p), sub: `${nfmt(citas(cA)(i))} → ${nfmt(citas(cB)(i))} citas` })));
+  const cerca = c => i => c.cerca.get(i) || 0;
+  const qA = puesto(cerca(cA), [...cA.cerca.keys()]), qB = puesto(cerca(cB), [...cB.cerca.keys()]);
+  h += tarjeta("Lo más central (cercanía), después", "Puesto en Después y su movimiento respecto de Antes, en la red de citas y modificaciones entre artículos y actos.",
+    [...qB.entries()].slice(0, 12).map(([i, p]) => ({ i, v: cerca(cB)(i), txt: nfmt(cerca(cB)(i), 3), nom: nomNodo(i), d: mov(qA.get(i), p),
+      sub: `${(TIPOS[N[i].k] || [""])[0]} · antes ${qA.has(i) ? qA.get(i) + "°" : "no figuraba"}` })));
+  h += `<p class="expl" style="margin-top:16px">Si se quita un acto cuyo texto otro acto incluido volvió a modificar, el texto se muestra como lo dejó el acto incluido: el árbol no guarda cómo se habría aplicado sobre el texto anterior. Las citas entre artículos no siguen qué versión del texto las contiene.</p>`;
+  caja.innerHTML = h;
+  enlazarAD(caja);
+}
+function enlazarAD(caja) {
+  const cambiaPreset = (l, v) => {
+    if (l === "a") { adClaveA = v; if (v !== "pers") adA = conjuntoEsc(v); } else { adClaveB = v; if (v !== "pers") adB = conjuntoEsc(v); }
+    adTodos = {}; if (adVer !== "todo") verEsc(adVer); antesDespues();
+  };
+  $("ad-a").addEventListener("change", ev => cambiaPreset("a", ev.target.value));
+  $("ad-b").addEventListener("change", ev => cambiaPreset("b", ev.target.value));
+  caja.querySelectorAll(".ad-actos input").forEach(c => c.addEventListener("change", () => {
+    const S = c.dataset.l === "a" ? adA : adB, k = +c.dataset.k;
+    if (c.checked) S.add(k); else S.delete(k);
+    const igual = presetsEsc().find(([v]) => v !== "pers" && [...conjuntoEsc(v)].sort().join() === [...S].sort().join());
+    if (c.dataset.l === "a") adClaveA = igual ? igual[0] : "pers"; else adClaveB = igual ? igual[0] : "pers";
+    adTodos = {}; if (adVer !== "todo") verEsc(adVer); antesDespues();
+  }));
+  caja.querySelectorAll("[data-ver]").forEach(b => b.addEventListener("click", () => verEsc(b.dataset.ver)));
+  caja.querySelectorAll("[data-todos]").forEach(b => b.addEventListener("click", () => { adTodos[b.dataset.todos] = true; antesDespues(); }));
+  caja.querySelectorAll(".fila").forEach(b => b.addEventListener("click", () => irANodo(+b.dataset.i)));
+  caja.querySelectorAll("details[data-dif]").forEach(d => d.addEventListener("toggle", () => {
+    const div = d.querySelector(".ad-dif");
+    if (!d.open || div.dataset.listo) return;
+    const c = adRes.cambian[+d.dataset.dif], n = N[c.i];
+    const nom = v => esc(v ? `${(ACTOS[v[0]] || {}).c || "—"}${v[0] ? " · " + (OPS[v[1]] || v[1]) : ""}` : "sin versión");
+    div.innerHTML = c.difs.map(v => {
+      const u = parejaDe(n, v), despues = adB.has(v[0]);
+      const [va, vb] = despues ? [u, v] : [v, u], ta = va ? va[4] || "" : "", tb = vb ? vb[4] || "" : "";
+      const d = ta && tb ? htmlDiff(ta, tb) : null;
+      return `<span class="rot">Antes: ${nom(va)} → después: ${nom(vb)}</span>` +
+        (d || `<span class="rot">Antes</span>${esc(ta) || "—"}<span class="rot">Después</span>${esc(tb) || "—"}`);
+    }).join("");
+    div.dataset.listo = "1";
   }));
 }
 
