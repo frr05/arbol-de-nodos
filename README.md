@@ -204,6 +204,7 @@ Además de RITP, el repo trae otras concesiones del pipeline MT con Muse Spark (
 | ID | Concesión | Árbol más reciente | Versiones | Nodos del árbol | Grafo en Pages |
 |---|---|---|---:|---:|---|
 | RITP | Concesión Ruta Interportuaria Talcahuano – Penco | 2026-11-11 | 2 | 2 536 | [index.html](https://frr05.github.io/arbol-de-nodos/) |
+| LOA | Primera Concesión Rutas del Loa | 2026-11-18 | 1 | 4 622 | [salida/visor_LOA.html](https://frr05.github.io/arbol-de-nodos/salida/visor_LOA.html) |
 
 Una concesión sin vectores bge-m3 (`EMBEDDINGS_<ID>.npz`) se arma igual, pero sin relaciones de similitud ni «artículos más parecidos», y sus grupos salen solo de las citas entre artículos. El visor lo indica bajo el selector de versión.
 
