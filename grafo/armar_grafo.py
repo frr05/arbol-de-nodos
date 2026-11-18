@@ -75,7 +75,7 @@ class Grafo:
         if not self.completo:
             self.notas.append("sin fragmentos sueltos: las modificaciones salen del acto y las citas desde actos se "
                               "detectan en el texto de los nodos del árbol")
-        if self.d_vec != self.dv:
+        if self.d_vec != self.dv and (self.d / f"EMBEDDINGS_{cid}.npz").exists():
             self.notas.append("similitud con los vectores de la versión base, para los artículos con el mismo id")
         self.nodos: dict[str, dict] = {}            # id → nodo del visor
         self.aristas: list[tuple[str, str, str, str]] = []
@@ -492,7 +492,9 @@ class Grafo:
             return None
         guardado = json.loads(base.read_text(encoding="utf-8"))["pos"]
         rng = np.random.default_rng(7)
-        pos = {n: np.array(guardado[n], dtype=float) * 50 for n in G if n in guardado}
+        # un ruido mínimo separa los nodos que la base dejó en la misma coordenada: a distancia 0, ForceAtlas2 divide
+        # por cero y todas las posiciones quedan en NaN
+        pos = {n: np.array(guardado[n], dtype=float) * 50 + rng.normal(0, 0.01, 2) for n in G if n in guardado}
         for _ in range(8):
             for n in G:
                 if n not in pos:
@@ -514,7 +516,8 @@ class Grafo:
         if cache.exists():
             guardado = json.loads(cache.read_text(encoding="utf-8"))
             if (guardado.get("iter"), guardado.get("aristas"), set(guardado.get("pos", {}))) == \
-                    (iteraciones, n_aristas, set(self.nodos)):
+                    (iteraciones, n_aristas, set(self.nodos)) and \
+                    all(np.isfinite(v).all() for v in guardado["pos"].values()):
                 for nid, n in self.nodos.items():
                     n["x"], n["y"] = guardado["pos"][nid]
                 print(f"  disposición reutilizada de {cache.name}")
@@ -530,6 +533,8 @@ class Grafo:
         pos = nx.forceatlas2_layout(G, pos=inicial, max_iter=iteraciones, seed=7, weight="weight", scaling_ratio=2.0,
                                     gravity=1.0, linlog=True)
         xy = np.array([pos[n] for n in self.nodos], dtype=float)
+        if not np.isfinite(xy).all():
+            raise RuntimeError(f"ForceAtlas2 dejó {int((~np.isfinite(xy)).any(axis=1).sum())} nodos sin posición (NaN)")
         xy -= np.median(xy, axis=0)
         r = np.hypot(xy[:, 0], xy[:, 1])
         xy /= max(np.percentile(r, 98), 1e-9)
@@ -671,10 +676,15 @@ def main():
             capitulos_base = g.capitulos
         datos = g.datos_visor()
         fecha = (g.arbol.get("generado") or "")[:10]
+        n_arbol = f"{len(g.arbol['nodos']):,} nodos".replace(",", ".")
+        num = re.fullmatch(r"version-(\d+)", nombre)
+        if args.concesion == "RITP" or (nombre and not num):      # versiones con nombre de fecha (RITP), como siempre
+            etiqueta = f"{fecha} · {n_arbol}" + ((" (base, ver-estable-arbol)" if args.concesion == "RITP" else " (base)")
+                                                 if not nombre else "")
+        else:                                  # versiones numeradas: data/<ID>/ es la 1 y versiones/version-N/ la N
+            etiqueta = f"Versión {num[1] if num else 1} · {g.arbol.get('generado') or ''} · {n_arbol}" + ("" if nombre else " (base)")
         versiones.append({"id": nombre or "base", "datos": datos, "generado": g.arbol.get("generado"),
-                          "etiqueta": f"{fecha} · {len(g.arbol['nodos']):,} nodos".replace(",", ".")
-                                      + ((" (base, ver-estable-arbol)" if args.concesion == "RITP" else " (base)")
-                                         if not nombre else ""),
+                          "etiqueta": etiqueta,
                           "nodos": len(g.nodos), "relaciones": len(g.aristas), "notas": g.notas, "defecto": False})
         (salida / f"grafo_{args.concesion}{g.sufijo}.html").write_text(
             pagina(visor([versiones[-1] | {"defecto": True}], args.concesion)), encoding="utf-8")
