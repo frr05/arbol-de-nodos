@@ -1,0 +1,77 @@
+acto;documento;pag_inicio;pag_fin;tipo;numero;fecha;origen;titulo
+CN.D01.A1;CN.D01;1;257;bases licitacion;;1999-07-01;manual;Bases de Licitacion Sistema Oriente – Poniente (Costanera Norte)
+CN.D02.A1;CN.D02;1;8;circular aclaratoria;1;1999-09-17;texto;Concesión Sistema Oriente – Poniente (Costanera Norte) – Circulares Aclaratorias
+CN.D02.A2;CN.D02;9;35;circular aclaratoria;2;1999-09-20;texto;Concesión Sistema Oriente – Poniente (Costanera Norte) – Circulares Aclaratorias
+CN.D02.A3;CN.D02;36;54;circular aclaratoria;3;1999-10-06;texto;Concesión Sistema Oriente – Poniente (Costanera Norte) – Circulares Aclaratorias
+CN.D02.A4;CN.D02;55;61;circular aclaratoria;4;1999-10-18;texto;Concesión Sistema Oriente – Poniente (Costanera Norte) – Circulares Aclaratorias
+CN.D02.A5;CN.D02;62;120;circular aclaratoria;5;1999-11-02;texto;Concesión Sistema Oriente – Poniente (Costanera Norte) – Circulares Aclaratorias
+CN.D02.A6;CN.D02;121;124;circular aclaratoria;6;1999-11-04;texto;Concesión Sistema Oriente – Poniente (Costanera Norte) – Circulares Aclaratorias
+CN.D03.A1;CN.D03;1;12;decreto adjudicacion;375;2000-02-24;manual;Decreto de Adjudicacion – Sistema Oriente – Poniente (Costanera Norte)
+CN.D04.A1;CN.D04;1;4;publicacion diario oficial;36.644;2000-04-19;texto;(2000-04-19) Publicación DO – Sistema OrientePoniente (Costanera Norte)
+CN.D43.A1;CN.D43;1;64;convenio complementario;1;2001-09-27;texto;SOP Convenio Complementario N° 1
+CN.D44.A1;CN.D44;1;95;convenio complementario;2;2002-02-23;texto;SOP Convenio Complementario N° 2
+CN.D45.A1;CN.D45;1;77;convenio complementario;3;2003-05-30;texto;SOP Convenio Complementario N° 3 y 4
+CN.D14.A1;CN.D14;1;5;resolucion;2578;2003-11-11;texto;Resolución DGOP N° 2578-2003
+CN.D15.A1;CN.D15;1;4;resolucion;3256;2003-12-30;texto;Resolución N° 3256-2003
+CN.D16.A1;CN.D16;1;4;resolucion;688;2004-03-22;texto;Resolución N° 688-2004
+CN.D17.A1;CN.D17;1;4;resolucion;2747;2004-10-22;texto;Resolución N° 2747-2004
+CN.D46.A1;CN.D46;1;128;convenio complementario;5;2005-04-11;texto;SOP Convenio Complementario N° 5
+CN.D07.A1;CN.D07;1;4;puesta en servicio;924;2005-04-12;texto;SOP (2005-04-12) Resol. Nº 924 – PSP Tramos 3, 4, 5, 6, 7, 8 y 10
+CN.D18.A1;CN.D18;1;5;resolucion;927;2005-04-12;texto;Resolución N° 927-2005
+CN.D19.A1;CN.D19;1;4;resolucion;3733;2005-11-30;texto;Resolución N° 3733-2005
+CN.D70.A1;CN.D70;1;67;reglamento servicio;;2006-02-28;manual;Reglamento de Servicio – Sistema OrientePoniente (Costanera Norte)
+CN.D06.A1;CN.D06;1;3;puesta en servicio;1536;2006-05-16;texto;SOP (2006-05-16) Resol. Nº 1536 – PSP Tramo 2
+CN.D08.A1;CN.D08;1;4;puesta en servicio;3293;2006-10-02;texto;SOP (2006-10-02) Resol. Nº 3293 – PSP Tramo 9
+CN.D11.A1;CN.D11;1;5;puesta en servicio;3899;2006-11-21;texto;SOP (2006-11-21) Resol. Nº 3899 – PSD Tramos 2, 3, 4, 5, 6, 7, 8 y 10
+CN.D21.A1;CN.D21;1;5;resolucion;139;2007-01-19;texto;Resolución N° 139-2007
+CN.D20.A1;CN.D20;1;4;resolucion;1513;2007-05-14;texto;Resolución N° 1513-2007
+CN.D10.A1;CN.D10;1;3;puesta en servicio;2455;2007-07-31;texto;SOP (2007-07-31) Resol. Nº 2455 – PSD Tramo 9
+CN.D22.A1;CN.D22;1;4;resolucion;2917;2007-09-20;texto;Resolución N° 2917-2007
+CN.D05.A1;CN.D05;1;3;puesta en servicio;2484;2007-10-03;texto;SOP (2007-10-03) Resol. Nº 2484 – PSP Tramo 1
+CN.D47.A1;CN.D47;1;69;convenio complementario;6;2007-10-22;texto;SOP Convenio Complementario N° 6
+CN.D23.A1;CN.D23;1;4;resolucion;4465;2007-12-28;texto;Resolución N° 4465-2007
+CN.D09.A1;CN.D09;1;3;puesta en servicio;2484;2008-07-08;texto;SOP (2008-07-08) Resol. Nº 2484 – PSD Tramo 1
+CN.D30.A1;CN.D30;1;6;decreto supremo;607;2008-12-04;texto;Decreto Supremo N° 607-2008
+CN.D24.A1;CN.D24;1;10;resolucion;1212;2009-03-18;texto;Resolución DGOP N° 1212-2009
+CN.D31.A1;CN.D31;1;10;decreto supremo;178;2009-05-06;texto;Decreto Supremo N° 178-2009
+CN.D58.A1;CN.D58;1;6;decreto supremo;103;2010-01-20;texto;Decreto Supremo N° 103-2010
+CN.D25.A1;CN.D25;1;10;resolucion;3003;2010-09-06;texto;Resolución DGOP N° 3003-2010
+CN.D26.A1;CN.D26;1;10;resolucion;4111;2010-11-25;texto;Resolución DGOP N° 4111-2010
+CN.D32.A1;CN.D32;1;9;decreto supremo;407;2010-11-30;texto;Decreto Supremo N° 407-2010
+CN.D59.A1;CN.D59;1;10;decreto supremo;171;2011;archivo;Decreto Supremo N° 171-2011
+CN.D34.A1;CN.D34;1;7;decreto supremo;22;2011-01-21;texto;Decreto Supremo N° 22-2011
+CN.D33.A1;CN.D33;1;11;decreto supremo;425;2011-12-14;texto;Decreto Supremo N° 425-2011
+CN.D60.A1;CN.D60;1;10;decreto supremo;234;2012-07-19;texto;Decreto Supremo N° 234-2012
+CN.D35.A1;CN.D35;1;30;decreto supremo;369;2012-12-27;texto;Decreto Supremo N° 369-2012
+CN.D36.A1;CN.D36;1;91;decreto supremo;318;2013;archivo;Decreto Supremo N° 318-2013
+CN.D71.A1;CN.D71;1;41;otro;;2013;archivo;Memoria Anual 2013 – Sistema OrientePoniente (Costanera Norte)
+CN.D61.A1;CN.D61;1;10;decreto supremo;157;2013-03-21;texto;Decreto Supremo N° 157-2013
+CN.D63.A1;CN.D63;1;12;resolucion;5465;2013-12-30;texto;Resolución DGOP N° 5465-2013
+CN.D27.A1;CN.D27;1;6;resolucion;3327;2014-09-04;texto;Resolución DGOP N° 3327-2014
+CN.D37.A1;CN.D37;1;7;decreto supremo;460;2014-12-02;texto;Decreto Supremo N° 460-2014
+CN.D64.A1;CN.D64;1;12;resolucion;5192;2014-12-22;texto;Resolución DGOP N° 5192-2014
+CN.D40.A1;CN.D40;1;9;decreto supremo;275;2015;archivo;Decreto Supremo N° 275-2015
+CN.D41.A1;CN.D41;1;11;decreto supremo;276;2015;archivo;Decreto Supremo N° 276-2015
+CN.D38.A1;CN.D38;1;6;decreto supremo;97;2015-03-02;texto;Decreto supremo N° 97-2015
+CN.D28.A1;CN.D28;1;6;resolucion;1759;2015-04-17;texto;Resolución DGOP N° 1759-2015
+CN.D62.A1;CN.D62;1;12;decreto supremo;124;2015-06-23;texto;Decreto Supremo N° 124-2015
+CN.D39.A1;CN.D39;1;9;decreto supremo;268;2015-12-04;texto;Decreto supremo N° 268-2015
+CN.D66.A1;CN.D66;1;10;resolucion;4621;2016-12-30;texto;Resolución Exenta N° 4621-2016
+CN.D65.A1;CN.D65;1;16;resolucion;4616;2017;archivo;Resolución Exenta N° 4616 – Pase Diario 2017
+CN.D67.A1;CN.D67;1;12;resolucion;3141;2017-08-14;texto;Resolución Exenta N° 3141 del 14.08.2017
+CN.D68.A1;CN.D68;1;28;decreto supremo;117;2017-10-26;texto;Decreto Supremo N° 117 del 26.10.2017
+CN.D42.A1;CN.D42;1;26;decreto supremo;119;2017-11-02;texto;Decreto Supremo N° 119 del 27.11.2017
+CN.D29.A1;CN.D29;1;18;resolucion;641;2018-02-13;texto;Resolución DGOP N° 641 del 13.03.2018
+CN.D69.A1;CN.D69;1;32;decreto supremo;110;2018-07-04;texto;Decreto Supremo N° 110 del 04.07.2018
+CN.D13.A1;CN.D13;1;26;decreto supremo;22;2020-03-04;texto;Decreto Supremo N°22 del 04-03-2020
+CN.D12.A1;CN.D12;1;30;decreto supremo;101;2020-09-10;texto;Decreto Supremo N°101-2020
+CN.D48.A1;CN.D48;1;9;decreto supremo;137;2023-07-25;texto;DS MOP N° 137 de fecha 25.07.2023
+CN.D49.A1;CN.D49;1;18;resolucion;0145;2023-12-29;texto;Resolución N° 0145 de fecha 29.12.2023
+CN.D50.A1;CN.D50;1;11;decreto supremo;006;2024-01-22;texto;DS MOP N°006 de fecha 22-01-2024
+CN.D51.A1;CN.D51;1;26;resolucion;114;2024-12-27;texto;AVS Res DGC N°114 de fecha 27-12-2024
+CN.D53.A1;CN.D53;1;17;decreto supremo;04;2025-01-17;texto;DS MOP N°04 de fecha 17-01-2025
+CN.D52.A1;CN.D52;1;18;resolucion;17;2025-02-11;texto;RES EX N°17
+CN.D54.A1;CN.D54;1;12;decreto supremo;46;2025-03-21;texto;DS MOP N°46 de fecha 21-03-2025
+CN.D55.A1;CN.D55;1;40;resolucion;84;2025-07-04;texto;Resolución DGC (E) N°84, de fecha 04-07-2025
+CN.D57.A1;CN.D57;1;10;decreto supremo;110;2025-10-15;texto;Decreto Supremo MOP N°110 de fecha 15-10-2025
+CN.D56.A1;CN.D56;1;27;decreto supremo;114;2025-10-23;texto;Decreto Supremo MOP N°114 de fecha 23-10-2025
