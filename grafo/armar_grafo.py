@@ -25,6 +25,8 @@ import csv
 import json
 import re
 import sys
+import threading
+import time
 from collections import Counter, defaultdict
 from pathlib import Path
 
@@ -38,6 +40,18 @@ RAIZ = Path(__file__).resolve().parent.parent
 MAX_TEXTO = 1500          # caracteres de texto por nodo en el visor
 MAX_VERSION = 400         # caracteres por versión anterior
 PESOS = {"jerarquia": 1.0, "procedencia": 0.6, "modifica": 1.5, "ubica": 1.0, "cita": 0.25, "cita_acto": 0.25}
+
+
+def duracion(s: float) -> str:
+    """Segundos como «45 s», «12 min» o «1 h 05 min» para los mensajes de avance."""
+    s = int(round(s))
+    if s < 60:
+        return f"{s} s"
+    if s < 600:
+        return f"{s // 60} min {s % 60:02d} s"
+    if s < 3600:
+        return f"{s // 60} min"
+    return f"{s // 3600} h {s % 3600 // 60:02d} min"
 
 
 def titulo_normal(n: dict) -> str:
@@ -530,8 +544,35 @@ class Grafo:
                 G.add_edge(s, t, weight=w)
         # LinLog separa más los grupos (capítulos, actos); los nodos sin aristas se acercan al centro al escalar
         inicial = self.posiciones_iniciales(G)
-        pos = nx.forceatlas2_layout(G, pos=inicial, max_iter=iteraciones, seed=7, weight="weight", scaling_ratio=2.0,
-                                    gravity=1.0, linlog=True)
+        fa2 = dict(seed=7, weight="weight", scaling_ratio=2.0, gravity=1.0, linlog=True)
+        # avance: networkx no informa en qué vuelta va, así que 2 vueltas de prueba miden el costo de una en este grafo
+        # y este equipo (cada vuelta cuesta lo mismo: repulsión entre todos los pares) y un hilo informa cada 30 s.
+        # La prueba no cambia el resultado: forceatlas2_layout copia `pos` y su azar sale solo de `seed`.
+        t0 = time.time()
+        nx.forceatlas2_layout(G, pos=inicial, max_iter=2, **fa2)
+        total = (time.time() - t0) / 2 * iteraciones
+        miles = lambda x: f"{x:,}".replace(",", ".")
+        print(f"  disposición: {miles(G.number_of_nodes())} nodos y {miles(G.number_of_edges())} relaciones, "
+              f"{iteraciones} vueltas · estimado ~{duracion(total)}")
+        listo = threading.Event()
+
+        def informar(inicio=time.time()):
+            while not listo.wait(30):
+                t = time.time() - inicio
+                if t < total:
+                    print(f"  disposición: {duracion(t)} de ~{duracion(total)} ({round(100 * t / max(total, 1e-9))} %)"
+                          f" · faltan ~{duracion(total - t)}")
+                else:                              # la estimación es aproximada: puede quedarse corta
+                    print(f"  disposición: {duracion(t)}, más de lo estimado (~{duracion(total)}) · ya debería terminar")
+
+        hilo = threading.Thread(target=informar, daemon=True)
+        hilo.start()
+        t0 = time.time()
+        try:
+            pos = nx.forceatlas2_layout(G, pos=inicial, max_iter=iteraciones, **fa2)
+        finally:
+            listo.set()
+        print(f"  disposición calculada en {duracion(time.time() - t0)}")
         xy = np.array([pos[n] for n in self.nodos], dtype=float)
         if not np.isfinite(xy).all():
             raise RuntimeError(f"ForceAtlas2 dejó {int((~np.isfinite(xy)).any(axis=1).sum())} nodos sin posición (NaN)")
@@ -656,6 +697,7 @@ def main():
     ap.add_argument("--fragmento", type=Path, help="escribe además el visor con todas las versiones sin <html>/<head> "
                                                    "(para publicarlo como artefacto)")
     args = ap.parse_args()
+    sys.stdout.reconfigure(line_buffering=True)   # el avance se ve al momento también cuando la salida va a un log
     salida = RAIZ / "salida"
     salida.mkdir(exist_ok=True)
     carpeta = RAIZ / "data" / args.concesion / "versiones"
@@ -667,11 +709,18 @@ def main():
         if nombre:
             g.capitulos_base = capitulos_base
         print(f"\n== {args.concesion} · versión {nombre or 'base'} ({g.arbol.get('generado')})")
+        inicio = time.time()
+        paso = lambda txt: print(f"  [{time.strftime('%H:%M:%S')} · {duracion(time.time() - inicio)}] {txt}")
+        paso("armar nodos y relaciones")
         g.armar()
+        paso(f"similitud ({len(g.nodos):,} nodos y {len(g.aristas):,} relaciones)".replace(",", "."))
         g.similitud()
+        paso("grupos (Louvain)")
         g.comunidades(args.resolucion)
         g.datar()
+        paso("disposición (ForceAtlas2)")
         g.disponer(args.iter)
+        paso("escribir visor, GraphML y resumen")
         if not nombre:
             capitulos_base = g.capitulos
         datos = g.datos_visor()
