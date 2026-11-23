@@ -1,0 +1,86 @@
+{
+ "documento": "AVO.D23",
+ "fragmentos": [
+  {
+   "id": "AVO.D23.F0001",
+   "acto": "AVO.D23.A1",
+   "lineas": [
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "pags": [
+    1
+   ],
+   "refs": [],
+   "verbo": false,
+   "ajeno": false
+  },
+  {
+   "id": "AVO.D23.F0002",
+   "acto": "AVO.D23.A1",
+   "lineas": [
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+   ],
+   "pags": [
+    1
+   ],
+   "refs": [],
+   "verbo": false,
+   "ajeno": false
+  },
+  {
+   "id": "AVO.D23.F0003",
+   "acto": "AVO.D23.A1",
+   "lineas": [
+    16,
+    17,
+    18,
+    19
+   ],
+   "pags": [
+    1
+   ],
+   "refs": [],
+   "verbo": false,
+   "ajeno": false
+  },
+  {
+   "id": "AVO.D23.F0004",
+   "acto": "AVO.D23.A1",
+   "lineas": [
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31
+   ],
+   "pags": [
+    1
+   ],
+   "refs": [
+    "1.5.5"
+   ],
+   "verbo": false,
+   "ajeno": false
+  }
+ ]
+}

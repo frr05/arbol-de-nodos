@@ -1,0 +1,32 @@
+acto;documento;pag_inicio;pag_fin;tipo;numero;fecha;origen;titulo
+AVO.D11.A1;AVO.D11;1;483;bases licitacion;;;sin fecha;Bases de Licitación – AVOII
+AVO.D02.A1;AVO.D02;1;2;precalificacion;1;2007-12-14;texto;AVOII Precal Circular Aclaratoria N°1
+AVO.D03.A1;AVO.D03;1;3;precalificacion;2;2010-07-08;texto;AVOII Precal Circular Aclaratoria N°2
+AVO.D04.A1;AVO.D04;1;2;precalificacion;3;2011-04-26;texto;AVOII Precal Circular Aclaratoria N°3
+AVO.D04.A2;AVO.D04;3;6;precalificacion;3;2011-04-26;texto;AVOII Precal Circular Aclaratoria N°3
+AVO.D05.A1;AVO.D05;1;6;precalificacion;4;2011-08-31;texto;AVOII Precal Circular Aclaratoria N°4
+AVO.D06.A1;AVO.D06;1;4;precalificacion;5;2011-10-26;texto;AVOII Precal Circular Aclaratoria N°5
+AVO.D06.A2;AVO.D06;5;6;precalificacion;5;2011-10-26;texto;AVOII Precal Circular Aclaratoria N°5
+AVO.D07.A1;AVO.D07;1;4;precalificacion;6;2012-05-11;texto;AVOII Precal Circular Aclaratoria N°6
+AVO.D08.A1;AVO.D08;1;4;precalificacion;7;2012-11-19;texto;AVOII Precal Circular Aclaratoria N°7
+AVO.D08.A2;AVO.D08;5;6;precalificacion;7;2012-11-19;texto;AVOII Precal Circular Aclaratoria N°7
+AVO.D09.A1;AVO.D09;1;4;precalificacion;8;2013-01-30;texto;AVOII Precal Circular Aclaratoria N°8
+AVO.D10.A1;AVO.D10;1;4;precalificacion;9;2016-01-08;texto;AVOII Precal Circular Aclaratoria N°9
+AVO.D12.A1;AVO.D12;1;14;circular aclaratoria;1;2016-09-15;manual;AVOII Resolución DGOP N°147-2016 (aprueba la Circular Aclaratoria N°1)
+AVO.D13.A1;AVO.D13;1;4;circular aclaratoria;2;2016-10-28;texto;AVOII Circular aclaratoria N°2
+AVO.D14.A1;AVO.D14;1;12;circular aclaratoria;3;2016-12-12;texto;AVOII Circular aclaratoria N°3
+AVO.D15.A1;AVO.D15;1;4;circular aclaratoria;4;2017-01-27;texto;AVOII Circular aclaratoria N°4
+AVO.D16.A1;AVO.D16;1;36;circular aclaratoria;5;2017-02-27;texto;AVOII Circular aclaratoria N°5
+AVO.D17.A1;AVO.D17;1;4;circular aclaratoria;6;2017-04-18;texto;AVOII Circular aclaratoria N°6
+AVO.D18.A1;AVO.D18;1;10;circular aclaratoria;7;2017-04-26;texto;AVOII Circular aclaratoria N°7
+AVO.D19.A1;AVO.D19;1;182;circular aclaratoria;8;2017-05-15;texto;AVOII Circular aclaratoria N°8
+AVO.D01.A1;AVO.D01;1;21;precalificacion;;;sin fecha;Bases de Precalificación – AVOII
+AVO.D02.A2;AVO.D02;3;6;precalificacion;1;;sin fecha;AVOII Precal Circular Aclaratoria N°1
+AVO.D05.A2;AVO.D05;7;8;precalificacion;4;;sin fecha;AVOII Precal Circular Aclaratoria N°4
+AVO.D20.A1;AVO.D20;1;1;compradores bases;;;sin fecha;Empresas que han comprado Bases de Licitación – AVOII
+AVO.D21.A1;AVO.D21;1;24;publicacion diario oficial;42.024;2017-11-15;texto;Publicación Diario Oficial – AVOII
+AVO.D22.A1;AVO.D22;1;33;decreto adjudicacion;126;2017-11-15;manual;Decreto de Adjudicación – AVOII
+AVO.D23.A1;AVO.D23;1;1;oferta economica;1;;sin fecha;Acta de Apertura de Ofertas Económicas – AVOII
+AVO.D24.A1;AVO.D24;1;20;decreto supremo;107;2023-06-20;texto;D.S. N°107 de 20/06/2023
+AVO.D25.A1;AVO.D25;1;18;resolucion;050;2026-04-16;texto;RES DGC N°50 de fecha 16-04-2026
+AVO.D26.A1;AVO.D26;1;13;publicacion diario oficial;149;2026-05-05;texto;DS MOP N°149 de fecha 05-05-2026
