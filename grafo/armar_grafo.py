@@ -68,6 +68,22 @@ def recortar(t: str, n: int) -> str:
     return t if len(t) <= n else t[:n].rsplit(" ", 1)[0] + " …"
 
 
+def es_texto_tabla(t: str) -> bool:
+    """Párrafo que es una tabla escrita como texto: la mitad o más de sus líneas tienen celdas separadas por « | »."""
+    lineas = [ln for ln in (t or "").splitlines() if ln.strip()]
+    return len(lineas) >= 2 and sum(ln.count(" | ") >= 2 for ln in lineas) >= 0.5 * len(lineas)
+
+
+def tiene_tabla_texto(t: str) -> bool:
+    """Texto con al menos dos líneas seguidas de celdas « | » (una tabla dentro de la prosa)."""
+    seguidas = 0
+    for ln in (t or "").splitlines():
+        seguidas = seguidas + 1 if ln.count(" | ") >= 2 else 0
+        if seguidas >= 2:
+            return True
+    return False
+
+
 def nombre_corto(a: dict) -> str:
     tipo = (a.get("tipo") or "").capitalize()
     num = a.get("numero")
@@ -125,15 +141,38 @@ class Grafo:
                       texto=(f"{a.get('nombre')}. Documento {doc['id']} «{doc.get('titulo') or ''}»"
                              + (f", págs. {pags[0]}–{pags[-1]}" if pags else "")
                              + (f". Título leído: {fila.get('titulo')}" if fila.get("titulo") else "") + "."))
+        # tablas con filas estructuradas, por nodo padre (para mostrarlas como tabla en el lector)
+        vigente = lambda n: next((v for v in reversed(n.get("versiones") or []) if v.get("vigente")),
+                                 (n.get("versiones") or [{}])[-1])
+        tablas_de: dict[str, list[dict]] = defaultdict(list)
+        for n in arbol["nodos"]:
+            if n["tipo"] == "tabla" and isinstance(n.get("tabla"), dict) and n["tabla"].get("filas"):
+                tablas_de[n.get("padre")].append(n)
         # nodos del árbol
         for n in arbol["nodos"]:
             vs = n.get("versiones") or []
-            vig = next((v for v in reversed(vs) if v.get("vigente")), vs[-1] if vs else {})
+            vig = vigente(n)
             acto = (vig.get("acto") or {}).get("id") if isinstance(vig.get("acto"), dict) else None
             titulo = titulo_normal(n)
+            extra = {}
+            if n["tipo"] == "tabla" and n in tablas_de.get(n.get("padre"), []):
+                t = n["tabla"]
+                extra["tabla"] = {"h": t.get("encabezados") or [], "f": t["filas"], "n": t.get("notas") or ""}
+            elif n["tipo"] != "tabla" and tiene_tabla_texto(vig.get("texto")):
+                # texto con una tabla escrita como «a | b | c». Un párrafo que es solo esa tabla se asocia a la tabla
+                # estructurada del mismo padre que comparte página (o a la única que haya). Si no, el lector arma la
+                # tabla desde el texto completo, que va aparte para no cambiar las citas (se leen del texto recortado).
+                # Un nodo que ya trae sus tablas estructuradas como hijos no lo necesita: el lector quita esas líneas.
+                pags = set(vig.get("paginas") or [])
+                cands = tablas_de.get(n.get("padre"), []) if n["tipo"] == "inciso" and es_texto_tabla(vig.get("texto")) else []
+                par = [t for t in cands if pags & set(vigente(t).get("paginas") or [])] or (cands if len(cands) == 1 else [])
+                if par:
+                    extra["tabla_de"] = par[0]["id"]
+                elif not tablas_de.get(n["id"]):
+                    extra["tabla_texto"] = (vig.get("texto") or "").strip()
             self.nodo(n["id"], tipo=n["tipo"], etiqueta=self.etiqueta(n, titulo), titulo=titulo, ruta=n.get("ruta"),
                       numero=n.get("numero"), acto=acto, fecha=vig.get("fecha_desde"), paginas=vig.get("paginas") or [],
-                      texto=recortar(vig.get("texto"), MAX_TEXTO),
+                      texto=recortar(vig.get("texto"), MAX_TEXTO), **extra,
                       versiones=[{"acto": (v.get("acto") or {}).get("id"), "op": v.get("operacion") or v.get("relacion"),
                                   "fecha": v.get("fecha_desde"), "vigente": bool(v.get("vigente")),
                                   "texto": recortar(v.get("texto"), MAX_VERSION)} for v in vs] if len(vs) > 1 else [])
@@ -613,6 +652,12 @@ class Grafo:
                 o["g"] = idx_cap[n["capitulo"]]
             if n.get("ajeno"):
                 o["aj"] = 1
+            if n.get("tabla"):                      # filas de una tabla estructurada
+                o["tb"] = n["tabla"]
+            if n.get("tabla_de") in idx:            # párrafo que es esa tabla en texto
+                o["tt"] = idx[n["tabla_de"]]
+            elif n.get("tabla_texto"):              # párrafo que es una tabla en texto, sin tabla estructurada
+                o["ttx"] = n["tabla_texto"]
             o["o"] = n.get("origen", 0)
             if n.get("comunidad") is not None:
                 o["cm"] = n["comunidad"]

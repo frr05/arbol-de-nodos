@@ -214,6 +214,19 @@ del.d { color: var(--ink-2); background: color-mix(in srgb, var(--c8) 20%, trans
 .nota-acto { font-size: 13px; margin: 0 0 10px; }
 .nota-acto .txt { font-family: var(--f-text); font-size: 14px; color: var(--ink-2); white-space: pre-wrap; margin-top: 2px; }
 .b-leer { margin: 2px 0 12px; font-weight: 600; }
+.b-leer + .b-leer { margin-left: 6px; }
+.tb { margin: 6px 0 16px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; font-family: var(--f-ui); background: var(--panel); }
+.tb-cab { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; padding: 8px 10px; background: var(--bg); border-bottom: 1px solid var(--line); }
+.tb-cab b { font-size: 14px; line-height: 1.35; } .tb-meta { font-size: 12px; color: var(--muted); }
+.tb-cab .btn { margin-left: auto; }
+.tb-caja { max-height: 420px; overflow: auto; }
+.tb.ampliada .tb-caja { max-height: none; }
+.tb-t { border-collapse: collapse; font-size: 13px; line-height: 1.4; width: 100%; font-variant-numeric: tabular-nums; }
+.tb-t th { position: sticky; top: 0; z-index: 1; background: var(--panel); text-align: left; font-weight: 600; padding: 6px 8px; border-bottom: 2px solid var(--line); vertical-align: bottom; }
+.tb-t td { padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.tb-t td.c { white-space: nowrap; }
+.tb-t tr.sec td { font-weight: 700; letter-spacing: .03em; background: color-mix(in srgb, var(--ink) 6%, transparent); }
+.tb .expl { padding: 6px 10px; margin: 0; white-space: pre-wrap; }
 body.con-lector { overflow: hidden; }
 @media (max-width: 760px) { .lector-fondo { padding: 0; } .lector { border-radius: 0; height: 100%; border: 0; } .par { font-size: 15px; } }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
@@ -817,7 +830,8 @@ function ficha() {
     <span class="tipo">${marca(sel)}${esc(tipo[0])}${n.aj ? " · publicación ajena" : ""}</span>
     <h2>${esc(n.t)}</h2><div class="num">${esc(n.i)}</div>
     ${n.r ? `<div class="ruta">${esc(n.r)}</div>` : ""}
-    ${tieneTexto(sel) ? `<button class="btn b-leer" type="button" id="b-leer">Leer texto completo${cuentaCambios(sel) ? ` · ${cuentaCambios(sel)} cambio${cuentaCambios(sel) > 1 ? "s" : ""}` : ""}</button>` : ""}
+    ${tieneTexto(sel) && !n.tb ? `<button class="btn b-leer" type="button" id="b-leer">Leer texto completo${cuentaCambios(sel) ? ` · ${cuentaCambios(sel)} cambio${cuentaCambios(sel) > 1 ? "s" : ""}` : ""}</button>` : ""}
+    ${contarTablas(sel) ? `<button class="btn b-leer" type="button" id="b-tablas">${n.tb ? "Ver tabla" : `Ver tabla${contarTablas(sel) > 1 ? `s (${contarTablas(sel)})` : ""}`}</button>` : ""}
     <dl class="meta">${meta.map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join("")}</dl>
     ${textoALaFecha(n) ? `<div class="texto">${esc(textoALaFecha(n))}</div>` : ""}`;
   if (!existe(sel) && escVista) h = `<p class="vacio">Este nodo no existe en el escenario que muestra el grafo (pestaña Antes y después).</p>` + h;
@@ -859,6 +873,7 @@ function ficha() {
   caja.querySelectorAll(".item").forEach(b => b.addEventListener("click", () => { const i = +b.dataset.i; seleccionar(i); centrar(i); }));
   $("b-ver").onclick = () => centrar(sel);
   if ($("b-leer")) $("b-leer").onclick = () => abrirLector(sel);
+  if ($("b-tablas")) $("b-tablas").onclick = () => verTablas(sel);
   $("b-ppr").onclick = () => segmentar(sel);
   $("b-ruta-aqui").onclick = () => { const i = sel; if (rutaModo) salirRuta(); alternarRuta(i); };
   $("b-raiz").onclick = () => alternarArbol(sel);
@@ -877,6 +892,7 @@ function tieneTexto(i) {
   const n = N[i]; let r = false;
   if (n.k === "raiz" || n.k === "documento") r = false;
   else if (n.tx && !["acto"].includes(n.k)) r = true;
+  else if (n.tb) r = true;
   else r = hijos(i).some(j => TEXTUALES.has(N[j].k) || (ESTRUCTURA.has(N[j].k) && tieneTexto(j)));
   cacheTexto.set(i, r); return r;
 }
@@ -931,6 +947,98 @@ function htmlDiff(a, b) {
   return d.partes.map(p => p.t === "=" ? esc(p.w.join(" ")) : p.t === "+" ? `<ins class="d">${esc(p.w.join(" "))}</ins>` : `<del class="d">${esc(p.w.join(" "))}</del>`).join(" ") + cola;
 }
 let lectorNodo = -1, lectorVista = "cambios", lectorFoco = null;
+// ---------- tablas: las filas estructuradas (n.tb) o, si no las hay, las líneas «a | b | c» del párrafo (n.ttx) ----------
+let tablasPintadas = new Set();
+const esSeccion = (r, nc) => nc > 1 && r.length > 0 && (r.every(c => c === r[0]) || r.slice(1).every(c => !String(c).trim()));
+function tablaHTML(h, f, nc) {
+  const fila = r => esSeccion(r, nc) ? `<tr class="sec"><td colspan="${nc}">${esc(r[0])}</td></tr>`
+    : `<tr>${Array.from({ length: nc }, (_, k) => `<td${String(r[k] ?? "").length <= 14 ? ' class="c"' : ""}>${esc(r[k] ?? "")}</td>`).join("")}</tr>`;
+  return `<table class="tb-t">${h.length ? `<thead><tr>${Array.from({ length: nc }, (_, k) => `<th>${esc(h[k] ?? "")}</th>`).join("")}</tr></thead>` : ""}<tbody>${f.map(fila).join("")}</tbody></table>`;
+}
+function cajaTabla(id, titulo, meta, tabla, notas) {
+  return `<div class="tb" id="${id}"><div class="tb-cab"><b>${esc(titulo)}</b><span class="tb-meta">${esc(meta)}</span>
+    <button class="btn b-amp" type="button" aria-expanded="false">Ampliar</button></div><div class="tb-caja">${tabla}</div>${notas ? `<p class="expl">${esc(notas)}</p>` : ""}</div>`;
+}
+const pags = n => n.pg ? ` · pág${n.pg[0] === n.pg[1] ? `. ${n.pg[0]}` : `s. ${n.pg[0]}–${n.pg[1]}`}` : "";
+function tablaNodo(j) {                    // nodo `tabla` con filas estructuradas
+  const n = N[j], t = n.tb, nc = Math.max(t.h.length, ...t.f.map(r => r.length), 1);
+  tablasPintadas.add(j);
+  const filas = t.f.filter(r => !esSeccion(r, nc)).length;
+  return cajaTabla(`tb-${j}`, n.t, `${nfmt(filas)} fila${filas === 1 ? "" : "s"}${pags(n)}`, tablaHTML(t.h, t.f, nc), Array.isArray(t.n) ? t.n.join("\n") : t.n);
+}
+// texto con tablas escritas como «a | b | c»: trozos de prosa y de tabla (dos o más filas seguidas)
+const esFila = l => ((l || "").match(/ \| /g) || []).length >= 2;
+function trozos(texto) {
+  const L = texto.split("\n"), out = []; let prosa = [];
+  for (let k = 0; k < L.length; k++) {
+    if (!(esFila(L[k]) && esFila(L[k + 1]))) { prosa.push(L[k]); continue; }
+    while (prosa.length && !prosa[prosa.length - 1].trim()) prosa.pop();
+    const titulo = prosa.length && /^\s*tabla\b/i.test(prosa[prosa.length - 1]) ? prosa.pop().trim() : "";
+    if (prosa.join("").trim()) out.push({ prosa: prosa.join("\n") });
+    prosa = [];
+    const filas = [];
+    for (; k < L.length; k++) {
+      const l = L[k].trim();
+      if (esFila(l) || (l && l.length <= 60 && esFila(L[k + 1]))) filas.push(l);   // fila, o sección (CONSTRUCCIÓN…)
+      else break;
+    }
+    k--;
+    out.push({ titulo, filas });
+  }
+  if (prosa.join("").trim()) out.push({ prosa: prosa.join("\n") });
+  return out;
+}
+let idTabla = 0;
+function textoConTablas(texto, n) {
+  return trozos(texto).map(t => {
+    if (t.prosa !== undefined) return `<div class="txt">${esc(t.prosa.trim())}</div>`;
+    const f = []; let h = [];
+    for (const l of t.filas) {
+      if (!esFila(l)) { f.push([l]); continue; }
+      const r = l.replace(/^\|\s*|\s*\|$/g, "").split(/\s*\|\s*/);
+      if (!h.length && !f.length && !r.some(c => /^\d[\d.,\-–\s%]*$/.test(c))) h = r; else f.push(r);
+    }
+    const nc = Math.max(h.length, ...f.map(r => r.length), 1);
+    const filas = f.filter(r => r.length > 1 || nc === 1).length;
+    return cajaTabla(`tbx-${++idTabla}`, t.titulo || "Tabla", `${nfmt(filas)} fila${filas === 1 ? "" : "s"} · armada desde el texto${pags(n)}`,
+      tablaHTML(h, f.map(r => r.length === 1 && nc > 1 ? Array(nc).fill(r[0]) : r), nc), "");
+  }).join("");
+}
+const tablasEnTexto = s => s ? trozos(s).filter(t => t.filas).length : 0;
+const sinFilas = s => (s || "").split("\n").filter(l => !esFila(l)).join("\n").replace(/\n{3,}/g, "\n\n").trim();
+function textoNota(j) {                    // texto de un acto o aclaración: sus tablas, como tabla
+  const m = N[j], tbs = tablasDe(j);
+  if (tbs.length) return `<div class="txt">${esc(sinFilas(m.tx || m.t))}</div>` + tbs.map(tablaNodo).join("");
+  if (m.ttx) return textoConTablas(m.ttx, m);
+  return `<div class="txt">${esc(m.tx || m.t)}</div>`;
+}
+// párrafo o tabla: una tabla se pinta una sola vez, en el lugar del primer párrafo que la contiene
+function parrafoOTabla(j) {
+  const n = N[j];
+  const esTabla = n.k === "tabla" ? !!n.tb : n.k === "inciso" && (n.tt !== undefined || !!n.ttx) && !pasos(n);
+  if (!esTabla) return n.k === "tabla" ? "" : parrafo(j);
+  if (lectorVista === "original" && n.o > 0) return "";
+  const t = n.tt !== undefined ? n.tt : j;
+  if (n.k !== "tabla" && n.tt !== undefined && tablasPintadas.has(t)) return "";
+  if (n.k === "tabla" && tablasPintadas.has(j)) return "";
+  const nuevo = n.o > 0 && lectorVista === "cambios";
+  const cuerpo = n.ttx && n.tt === undefined ? textoConTablas(n.ttx, n) : tablaNodo(t);
+  return `<div class="par${nuevo ? " cambio" : ""}"><span class="rot">${esc(n.l)}</span>${nuevo ? `<div class="chips"><span class="etq cmb">Agregado por ${esc((ACTOS[n.o] || {}).c || "—")}</span></div>` : ""}${cuerpo}</div>`;
+}
+const tablasDe = i => hijos(i).filter(j => N[j].k === "tabla" && N[j].tb);
+function contarTablas(i, d = 0) {
+  const n = N[i];
+  if (n.tb) return 1;
+  let c = 0;
+  for (const j of hijos(i)) {
+    const k = N[j].k;
+    if (k === "tabla" && N[j].tb) c++;
+    else if (k === "inciso" && N[j].ttx) c += tablasEnTexto(N[j].ttx);
+    else if (NOTAS.has(k)) c += tablasDe(j).length || tablasEnTexto(N[j].ttx);
+    else if (ESTRUCTURA.has(k) && d < 6) c += contarTablas(j, d + 1);
+  }
+  return c;
+}
 function chipsPaso(ps) {
   return ps.slice(1).map(p => `<span class="etq cmb">${esc((ACTOS[p.a] || {}).c || "—")} · ${esc(OPS[p.op] || p.op)}${p.f ? " · " + esc(p.f) : ""}</span>`).join("");
 }
@@ -961,10 +1069,10 @@ function parrafo(j) {
 function bloque(i, d, notas) {
   const n = N[i]; let h = "";
   if (d > 0) h += `<h4><span class="num">${esc(n.l)}</span>${esc(n.t.replace(n.l, "").trim())}</h4>`;
-  if (TEXTUALES.has(n.k) || (n.tx && !hijos(i).length && !NOTAS.has(n.k))) return h + parrafo(i);
+  if (TEXTUALES.has(n.k) || (n.tx && !hijos(i).length && !NOTAS.has(n.k))) return h + parrafoOTabla(i);
   for (const j of hijos(i)) {
     const k = N[j].k;
-    if (TEXTUALES.has(k)) h += parrafo(j);
+    if (TEXTUALES.has(k)) h += parrafoOTabla(j);
     else if (NOTAS.has(k)) notas.push(j);
     else if (ESTRUCTURA.has(k) && d < 6 && tieneTexto(j)) h += bloque(j, d + 1, notas);
   }
@@ -972,12 +1080,13 @@ function bloque(i, d, notas) {
 }
 function pintarLector() {
   const i = lectorNodo, n = N[i], notas = [];
+  tablasPintadas = new Set();
   let h = bloque(i, 0, notas);
-  if (NOTAS.has(n.k) && n.tx) h = `<div class="par">${`<div class="txt">${esc(n.tx)}</div>`}</div>`;
+  if (NOTAS.has(n.k) && n.tx) h = `<div class="par">${textoNota(i)}</div>`;
   if (!h.trim()) h = `<p class="vacio">No hay texto para esta vista.</p>`;
   if (notas.length && lectorVista !== "original") h += `<div class="notas-actos"><h3>Instrucciones y actos que tocan este texto (${notas.length})</h3>` +
     notas.map(j => `<div class="nota-acto"><span class="etq">${esc((TIPOS[N[j].k] || [N[j].k])[0])}</span> <b>${esc(N[j].a !== undefined ? (ACTOS[N[j].a] || {}).c : "")}</b> <span class="etq">${esc(N[j].f || "")}</span>
-      <div class="txt">${esc(N[j].tx || N[j].t)}</div></div>`).join("") + `</div>`;
+      ${textoNota(j)}</div>`).join("") + `</div>`;
   $("lector-cuerpo").innerHTML = h;
   $("lector-ley").hidden = lectorVista !== "cambios";
   document.querySelectorAll("[data-vista]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.vista === lectorVista)));
@@ -1010,6 +1119,16 @@ function cerrarLector() {
   if (lectorFoco && lectorFoco.focus) lectorFoco.focus();
 }
 $("lector-cerrar").onclick = cerrarLector;
+$("lector-cuerpo").addEventListener("click", ev => {
+  const b = ev.target.closest(".b-amp"); if (!b) return;
+  const caja = b.closest(".tb"), abierta = caja.classList.toggle("ampliada");
+  b.textContent = abierta ? "Reducir" : "Ampliar"; b.setAttribute("aria-expanded", String(abierta));
+});
+function verTablas(i) {                    // abre el lector y lleva a la primera tabla
+  abrirLector(i);
+  const t = $("lector-cuerpo").querySelector(".tb");
+  if (t) t.scrollIntoView({ block: "start" });
+}
 $("lector").addEventListener("click", ev => { if (ev.target === $("lector")) cerrarLector(); });
 document.addEventListener("keydown", ev => { if (ev.key === "Escape" && !$("lector").hidden) { ev.stopPropagation(); cerrarLector(); } }, { signal: senal });
 document.querySelectorAll("[data-vista]").forEach(b => b.addEventListener("click", () => { lectorVista = b.dataset.vista; pintarLector(); }));
