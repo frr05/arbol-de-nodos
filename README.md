@@ -223,6 +223,7 @@ Además de RITP, el repo trae otras concesiones del pipeline MT con Muse Spark (
 | LOA | Primera Concesión Rutas del Loa | 2026-11-18 18:25 | 2 | 3 783 | [salida/visor_LOA.html](https://frr05.github.io/arbol-de-nodos/salida/visor_LOA.html) |
 | CN | Concesión Sistema Oriente – Poniente (Costanera Norte) | 2026-11-19 00:36 | 1 | 6 686 | [salida/visor_CN.html](https://frr05.github.io/arbol-de-nodos/salida/visor_CN.html) |
 | AVO | Concesión Américo Vespucio Oriente Príncipe de Gales – Los Presidentes | 2026-11-23 12:49 | 1 | 3 789 | [salida/visor_AVO.html](https://frr05.github.io/arbol-de-nodos/salida/visor_AVO.html) |
+| PCNP-2 | Segunda Concesión Camino Nogales – Puchuncaví | 2026-11-23 13:44 | 1 | 4 032 | [salida/visor_PCNP-2.html](https://frr05.github.io/arbol-de-nodos/salida/visor_PCNP-2.html) |
 
 Una concesión sin vectores bge-m3 (`EMBEDDINGS_<ID>.npz`) se arma igual, pero sin relaciones de similitud ni «artículos más parecidos», y sus grupos salen solo de las citas entre artículos. El visor lo indica bajo el selector de versión.
 

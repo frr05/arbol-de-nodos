@@ -1,0 +1,39 @@
+acto;documento;pag_inicio;pag_fin;tipo;numero;fecha;origen;titulo
+PCNP-2.D02.A1;PCNP-2.D02;1;467;bases licitacion;;;sin fecha;Bases de licitación – RCNP
+PCNP-2.D01.A1;PCNP-2.D01;1;1;llamado licitacion;;2015-11-27;texto;Llamado a licitación en el Diario Oficial – RCNP-2
+PCNP-2.D03.A1;PCNP-2.D03;1;14;decreto supremo;274;2015-12-17;texto;Decreto Supremo N°274 del 30-09-2015 – RCNP
+PCNP-2.D04.A1;PCNP-2.D04;1;4;circular aclaratoria;1;2015-12-23;texto;Circular Aclaratoria N°1 – RCNP
+PCNP-2.D05.A1;PCNP-2.D05;1;24;circular aclaratoria;2;2016-02-03;texto;Circular Aclaratoria N°2 – RCNP
+PCNP-2.D06.A1;PCNP-2.D06;1;18;circular aclaratoria;3;2016-02-12;texto;Circular Aclaratoria N°3 – RCNP
+PCNP-2.D07.A1;PCNP-2.D07;1;12;circular aclaratoria;4;2016-03-08;texto;Circular Aclaratoria N°4 – RCNP
+PCNP-2.D08.A1;PCNP-2.D08;1;20;circular aclaratoria;5;2016-03-11;texto;Circular Aclaratoria N°5 – RCNP
+PCNP-2.D09.A1;PCNP-2.D09;1;1;compradores bases;;;sin fecha;Empresas que han comprado Bases de Licitación – RCNP
+PCNP-2.D10.A1;PCNP-2.D10;1;2;oferta economica;;2016-04-22;texto;Acta de evaluación de Ofertas Económicas – RCNP
+PCNP-2.D11.A1;PCNP-2.D11;1;29;decreto adjudicacion;199;2016-06-07;manual;Decreto de Adjudicación – RCNP
+PCNP-2.D12.A1;PCNP-2.D12;1;24;publicacion diario oficial;41.540;2016-06-07;texto;Publicación Diario Oficial – RCNP
+PCNP-2.D13.A1;PCNP-2.D13;1;6;puesta en servicio;3142;2016-08-31;texto;RCNP (2016-08-31) Resol. DGOP N°3142 PSP
+PCNP-2.D14.A1;PCNP-2.D14;1;4;puesta en servicio;4152;2016-11-28;texto;RCNP (2016-11-28) Resol. N°4152 Rectifica PSP Fase 1-2
+PCNP-2.D15.A1;PCNP-2.D15;1;12;resolucion;3667;2019-12-20;texto;RCNP Resolución DGOP N°3667-2019
+PCNP-2.D16.A1;PCNP-2.D16;1;6;resolucion;310;2021-02-12;texto;Resol. DGC N°310/2021 de 12.02.2021 (Exenta)
+PCNP-2.D17.A1;PCNP-2.D17;1;22;resolucion;20;2021-05-05;texto;Resolución DGC N°20/2021 de 05.05.2021 (Exenta)
+PCNP-2.D18.A1;PCNP-2.D18;1;30;decreto supremo;90;2021-05-26;texto;DS MOP N°90/2021 de 26.05.2021
+PCNP-2.D19.A1;PCNP-2.D19;1;33;convenio complementario;204;2021-10-05;manual;Convenio Ad Referendum 1
+PCNP-2.D20.A1;PCNP-2.D20;1;14;resolucion;0002;2022-01-04;texto;Resol. DGC N°0002/2022 de 04.01.2022
+PCNP-2.D21.A1;PCNP-2.D21;1;14;decreto supremo;11;2022-01-13;texto;DS MOP N°11/2022 de 13.01.2022
+PCNP-2.D22.A1;PCNP-2.D22;1;12;resolucion;048;2022-09-08;texto;Resol. DGC N°048/2022 de 08.09.2022
+PCNP-2.D23.A1;PCNP-2.D23;1;6;resolucion;2941;2022-09-14;archivo;Resol. DGC N°2941/2022 de14.09.2022
+PCNP-2.D24.A1;PCNP-2.D24;1;17;decreto supremo;168;2022-10-05;texto;DS MOP N°168/2022 de 05.10.2022
+PCNP-2.D25.A1;PCNP-2.D25;1;39;convenio complementario;211;2022-11-30;manual;Convenio Ad Referendum 2
+PCNP-2.D26.A1;PCNP-2.D26;1;10;decreto supremo;216;2022-12-15;texto;DS N°216/2022 de 15.12.2022
+PCNP-2.D27.A1;PCNP-2.D27;1;14;resolucion;005;2023-01-16;texto;Resol. DGC N°005/2023 de 16.01.2023
+PCNP-2.D28.A1;PCNP-2.D28;1;14;decreto supremo;43;2023-02-28;texto;DS MOP N°43/2023 de 28.02.2023
+PCNP-2.D29.A1;PCNP-2.D29;1;6;resolucion;1204;2023-04-18;archivo;Resol. DGC N°1204/2023 (Exenta) de 18.04.2023
+PCNP-2.D30.A1;PCNP-2.D30;1;6;decreto supremo;307;2023-05-25;texto;DS N°307/2023 de 25.05.2023
+PCNP-2.D31.A1;PCNP-2.D31;1;9;convenio complementario;196;2023-09-08;texto;Convenio Ad Referendum 3
+PCNP-2.D32.A1;PCNP-2.D32;1;7;resolucion;3454;2023-10-19;archivo;Resol. DGC N°3454/2023 (Exenta), de 19.10.2023
+PCNP-2.D33.A1;PCNP-2.D33;1;12;convenio complementario;227;2023-11-14;texto;Convenio Ad Referendum 4
+PCNP-2.D34.A1;PCNP-2.D34;1;20;resolucion;122;2023-11-22;texto;RCNP Res N°122 de fecha 22-11-2023
+PCNP-2.D35.A1;PCNP-2.D35;1;14;decreto supremo;258;2023-12-27;texto;RCNP DS MOP N°258 de fecha 27-12-2023
+PCNP-2.D36.A1;PCNP-2.D36;1;5;resolucion;4063;2024-12-05;archivo;Resolución DGC N°4063 Exenta de 05.12.2024
+PCNP-2.D37.A1;PCNP-2.D37;1;20;resolucion;21;2025-02-18;texto;RES DGC N°21 de fecha 18-02-2025
+PCNP-2.D38.A1;PCNP-2.D38;1;13;decreto supremo;50;2025-04-10;texto;DS N°50_10-04-2025
