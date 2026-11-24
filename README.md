@@ -1,6 +1,6 @@
 # Árbol de nodos · grafo interactivo
 
-Grafo completo de una concesión de obras públicas de Chile (DGC, MOP), armado a partir del **árbol de nodos versionados** que genera el proyecto MT-v3. Reúne en una sola red:
+Grafo completo de una concesión de obras públicas de Chile (DGC, MOP), armado a partir del **árbol de nodos versionados** que genera el pipeline MT (repo `frr05/Arbol-Rutas-`). Reúne en una sola red:
 - todo el texto de las Bases de Licitación (partes, capítulos, artículos e incisos);
 - los documentos y actos administrativos posteriores (circulares, decretos, convenios, resoluciones…);
 - las relaciones entre todo ello.
@@ -10,7 +10,7 @@ La idea visual sigue el «Product Space» de Hidalgo y Hausmann:
 - un núcleo denso y una periferia;
 - etiquetas de grupo alrededor de la red.
 
-Hoy contiene la **Ruta Interportuaria Talcahuano – Penco (RITP)** y la **Primera Concesión Rutas del Loa (LOA)** (ver «Otras concesiones»).
+Hoy contiene cinco concesiones: RITP, LOA, CN, AVO y PCNP-2 (ver «Otras concesiones»).
 
 ## Ver en línea
 
@@ -27,10 +27,7 @@ La primera publicación tarda uno o dos minutos. `.nojekyll` hace que Pages sirv
 
 El visor trae **varias versiones del árbol** de la misma concesión y se elige cuál ver con el selector **Versión** de la cabecera. Abre la más reciente y recuerda la última elegida en el navegador.
 
-| Versión | Árbol | Nodos del árbol | Insumos |
-|---|---|---:|---|
-| 2026-11-11 (la más reciente) | `data/RITP/versiones/2026-11-11/` | 2 536 | Solo el árbol (ver abajo) |
-| 2026-11-05 (base) | `data/RITP/` (rama `ver-estable-arbol` de MT-v3) | 2 390 | Completos: fragmentos, texto por línea, chunks y vectores |
+La base de cada concesión es `data/<ID>/` (versión 1) y las versiones nuevas van en `data/<ID>/versiones/`. Hoy solo LOA tiene más de una (`data/LOA/versiones/version-2/`).
 
 Una versión que trae solo `nodos_versionados.json` se arma así:
 - sin nodos de fragmento sueltos;
@@ -44,7 +41,7 @@ El visor lo indica bajo el selector. La disposición de una versión parte de la
 1. Copia su `nodos_versionados.json` a `data/<ID>/versiones/<fecha>/`. Si la versión tiene insumos propios, agrega `fragmentos/`, `texto/`, `actos.csv`, `CHUNKS_<ID>.jsonl` y `EMBEDDINGS_<ID>.npz`.
 2. Ejecuta `python grafo/armar_grafo.py <ID>`.
 
-Cada versión tiene además su visor, su GraphML y su resumen propios en `salida/` (`grafo_RITP_2026-11-11.html`…). `salida/visor_RITP.html` reúne todas.
+Cada versión tiene además su visor, su GraphML y su resumen propios en `salida/` (`grafo_LOA_version-2.html`…). `salida/visor_<ID>.html` reúne todas.
 
 ## Abrir el grafo
 
@@ -202,24 +199,23 @@ El script lee `data/RITP/` y escribe todo en `salida/`. `grafo/plantilla.html` e
 
 ## Datos
 
-`data/RITP/` es una copia de los archivos del árbol estable de MT-v3 (ver `data/RITP/FUENTE.md`, con la rama y el commit):
+`data/RITP/`, como las demás concesiones, es una copia de los archivos del pipeline MT con Muse Spark (repo `frr05/Arbol-Rutas-`; ver `data/RITP/FUENTE.md`, con la rama y el commit):
 - `nodos_versionados.json`;
-- los chunks y vectores bge-m3;
 - `actos.csv`;
 - la estructura de las Bases;
 - los fragmentos y el texto por línea.
 
-El texto viene del OCR de los documentos públicos de la concesión, publicados por la DGC, y se mantiene literal. Puede tener errores de lectura, como «1,14» por «1.14».
+El texto viene de la lectura de los documentos públicos de la concesión, publicados por la DGC, y se mantiene literal. Puede tener errores de lectura, como «1,14» por «1.14».
 
 `grafo/numerales.py` es una copia de `mt/numerales.py` de MT-v3, para comparar numerales igual que el pipeline (`L6.32` = `1.6.32` = `I.6.32`).
 
 ## Otras concesiones
 
-Además de RITP, el repo trae otras concesiones del pipeline MT con Muse Spark (repo `frr05/Arbol-Rutas-`). Cada una tiene su propio visor, con todas sus versiones, y la portada **https://frr05.github.io/arbol-de-nodos/** las lista todas (`concesiones.html` redirige a ella).
+Además de RITP, el repo trae otras concesiones del mismo pipeline MT con Muse Spark (repo `frr05/Arbol-Rutas-`). Cada una tiene su propio visor, con todas sus versiones, y la portada **https://frr05.github.io/arbol-de-nodos/** las lista todas (`concesiones.html` redirige a ella).
 
 | ID | Concesión | Árbol más reciente | Versiones | Nodos del árbol | Grafo en Pages |
 |---|---|---|---:|---:|---|
-| RITP | Concesión Ruta Interportuaria Talcahuano – Penco | 2026-11-11 | 2 | 2 536 | [salida/visor_RITP.html](https://frr05.github.io/arbol-de-nodos/salida/visor_RITP.html) |
+| RITP | Concesión Ruta Interportuaria Talcahuano – Penco | 2026-11-24 11:56 | 1 | 2 111 | [salida/visor_RITP.html](https://frr05.github.io/arbol-de-nodos/salida/visor_RITP.html) |
 | LOA | Primera Concesión Rutas del Loa | 2026-11-18 18:25 | 2 | 3 783 | [salida/visor_LOA.html](https://frr05.github.io/arbol-de-nodos/salida/visor_LOA.html) |
 | CN | Concesión Sistema Oriente – Poniente (Costanera Norte) | 2026-11-19 00:36 | 1 | 6 686 | [salida/visor_CN.html](https://frr05.github.io/arbol-de-nodos/salida/visor_CN.html) |
 | AVO | Concesión Américo Vespucio Oriente Príncipe de Gales – Los Presidentes | 2026-11-23 12:49 | 1 | 3 789 | [salida/visor_AVO.html](https://frr05.github.io/arbol-de-nodos/salida/visor_AVO.html) |
@@ -233,4 +229,4 @@ Una concesión sin vectores bge-m3 (`EMBEDDINGS_<ID>.npz`) se arma igual, pero s
 2. `python grafo/armar_grafo.py <ID>`: escribe `salida/grafo_<ID>…`, `salida/visor_<ID>.html` y actualiza la portada `index.html`. La primera vez calcula la disposición (de 15 a 30 min en una concesión grande).
 3. `python grafo/verificar_grafo.py <ID>` debe terminar en «verificación OK».
 
-Una versión nueva de una concesión que ya está va en `data/<ID>/versiones/<fecha>/`, igual que en RITP.
+Una versión nueva de una concesión que ya está va en `data/<ID>/versiones/version-N/` (la base `data/<ID>/` es la versión 1), como `data/LOA/versiones/version-2/`.

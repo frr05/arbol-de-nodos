@@ -11,19 +11,7 @@
     3,
     4,
     5,
-    6
-   ],
-   "pags": [
-    1
-   ],
-   "refs": [],
-   "verbo": false,
-   "ajeno": false
-  },
-  {
-   "id": "RITP.D07.F0002",
-   "acto": "RITP.D07.A1",
-   "lineas": [
+    6,
     7,
     8,
     9,
@@ -44,7 +32,6 @@
     24,
     25,
     26,
-    27,
     28,
     29,
     30,
@@ -77,26 +64,27 @@
     57,
     58,
     59,
-    60,
-    61,
-    62,
-    63,
-    64,
-    65,
-    66,
-    67
+    60
    ],
    "pags": [
     1
    ],
    "refs": [],
    "verbo": false,
-   "ajeno": false
+   "ajeno": false,
+   "consulta": false
   },
   {
-   "id": "RITP.D07.F0003",
+   "id": "RITP.D07.F0002",
    "acto": "RITP.D07.A1",
    "lineas": [
+    61,
+    62,
+    63,
+    64,
+    65,
+    66,
+    67,
     68,
     69,
     70,
@@ -107,14 +95,7 @@
     75,
     76,
     77,
-    78,
-    79,
-    80,
-    81,
-    82,
-    83,
-    84,
-    85
+    78
    ],
    "pags": [
     1,
@@ -122,12 +103,20 @@
    ],
    "refs": [],
    "verbo": false,
-   "ajeno": false
+   "ajeno": false,
+   "consulta": false
   },
   {
-   "id": "RITP.D07.F0004",
+   "id": "RITP.D07.F0003",
    "acto": "RITP.D07.A1",
    "lineas": [
+    79,
+    80,
+    81,
+    82,
+    83,
+    84,
+    85,
     86,
     87,
     88,
@@ -159,22 +148,7 @@
     114,
     115,
     116,
-    117,
-    118,
-    119,
-    120,
-    121,
-    122,
-    123,
-    124,
-    126,
-    127,
-    128,
-    130,
-    131,
-    132,
-    133,
-    134
+    117
    ],
    "pags": [
     2,
@@ -184,58 +158,82 @@
     "1.10.3"
    ],
    "verbo": false,
-   "ajeno": false
+   "ajeno": false,
+   "consulta": false
+  },
+  {
+   "id": "RITP.D07.F0004",
+   "acto": "RITP.D07.A1",
+   "lineas": [
+    118,
+    119,
+    120,
+    121,
+    122,
+    123
+   ],
+   "pags": [
+    3
+   ],
+   "refs": [],
+   "verbo": false,
+   "ajeno": false,
+   "consulta": false
   },
   {
    "id": "RITP.D07.F0005",
    "acto": "RITP.D07.A1",
    "lineas": [
-    135,
-    136,
-    137
+    124,
+    125,
+    126
    ],
    "pags": [
     3
    ],
    "refs": [],
    "verbo": false,
-   "ajeno": false
+   "ajeno": false,
+   "consulta": false
   },
   {
    "id": "RITP.D07.F0006",
    "acto": "RITP.D07.A1",
    "lineas": [
-    138,
-    139,
-    140,
-    141,
-    142,
-    143
+    127,
+    128,
+    129,
+    130,
+    131,
+    132
    ],
    "pags": [
     3
    ],
    "refs": [],
    "verbo": false,
-   "ajeno": false
+   "ajeno": false,
+   "consulta": false
   },
   {
    "id": "RITP.D07.F0007",
    "acto": "RITP.D07.A1",
    "lineas": [
-    144,
-    145,
-    146,
-    147,
-    150,
-    151
+    133,
+    134,
+    135,
+    136,
+    137,
+    138,
+    139
    ],
    "pags": [
     3
    ],
    "refs": [],
    "verbo": false,
-   "ajeno": false
+   "ajeno": false,
+   "consulta": false
   }
  ]
 }

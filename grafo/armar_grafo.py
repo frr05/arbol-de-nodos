@@ -1,8 +1,8 @@
-"""Arma el grafo completo de una concesión desde el árbol de nodos versionados de MT-v3.
+"""Arma el grafo completo de una concesión desde el árbol de nodos versionados del pipeline MT.
 
 Uso:  python grafo/armar_grafo.py [RITP] [--iter 600] [--resolucion 1.3] [--fragmento ruta.html]
 
-Entrada: data/<ID>/ (copia de MT-v3, ver data/<ID>/FUENTE.md).
+Entrada: data/<ID>/ (copia del pipeline, ver data/<ID>/FUENTE.md).
 Salida:  salida/grafo_<ID>.html (visor interactivo autónomo), salida/grafo_<ID>.graphml (Gephi / yEd)
          y salida/resumen_<ID>.md (conteo de nodos y aristas por tipo).
 
@@ -702,7 +702,7 @@ class Grafo:
         ka = Counter(k for _, _, k, _ in self.aristas)
         ops = Counter(op for _, _, k, op in self.aristas if k == "modifica")
         lineas = [f"# Grafo {self.cid} · {self.arbol['concesion']['nombre']}", "",
-                  f"Árbol generado en MT-v3 el {self.arbol.get('generado')}. Ver `{self.dv.relative_to(RAIZ).as_posix()}/FUENTE.md`.", "",
+                  f"Árbol generado el {self.arbol.get('generado')}. Ver `{self.dv.relative_to(RAIZ).as_posix()}/FUENTE.md`.", "",
                   f"**{len(self.nodos)} nodos** y **{len(self.aristas)} aristas**.", "", "| Tipo de nodo | Cantidad |",
                   "|---|---:|"] + [f"| {k} | {v} |" for k, v in kn.most_common()] + [
                   "", "| Tipo de arista | Cantidad |", "|---|---:|"] + [f"| {k} | {v} |" for k, v in ka.most_common()] + [
@@ -772,9 +772,8 @@ def main():
         fecha = (g.arbol.get("generado") or "")[:10]
         n_arbol = f"{len(g.arbol['nodos']):,} nodos".replace(",", ".")
         num = re.fullmatch(r"version-(\d+)", nombre)
-        if args.concesion == "RITP" or (nombre and not num):      # versiones con nombre de fecha (RITP), como siempre
-            etiqueta = f"{fecha} · {n_arbol}" + ((" (base, ver-estable-arbol)" if args.concesion == "RITP" else " (base)")
-                                                 if not nombre else "")
+        if nombre and not num:                 # versiones con nombre de fecha
+            etiqueta = f"{fecha} · {n_arbol}"
         else:                                  # versiones numeradas: data/<ID>/ es la 1 y versiones/version-N/ la N
             etiqueta = f"Versión {num[1] if num else 1} · {g.arbol.get('generado') or ''} · {n_arbol}" + ("" if nombre else " (base)")
         versiones.append({"id": nombre or "base", "datos": datos, "generado": g.arbol.get("generado"),
